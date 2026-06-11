@@ -189,7 +189,8 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
             journeys={data.journeys}
             assignees={data.assignees}
           />
-          <div className="flex-1 overflow-auto scrollbar-thin">
+          <div className="flex-1 min-h-0 overflow-hidden bg-[var(--color-canvas)] px-4 py-3">
+            <div className="scrollbar-thin h-full overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm">
             {view === "board" ? (
               <BoardView
                 activities={filtered}
@@ -206,6 +207,7 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
                 onEdit={openEdit}
               />
             )}
+            </div>
           </div>
         </div>
         <ActivityDialog
