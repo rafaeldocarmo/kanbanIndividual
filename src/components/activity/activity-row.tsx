@@ -96,7 +96,7 @@ function ActivityRowImpl({
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-2 border-b border-[var(--color-border)] px-2 py-2.5 hover:bg-[var(--color-muted)]"
+      className="group flex items-center gap-2 border-b border-[var(--color-border)] px-4 py-2.5 hover:bg-[var(--color-muted)]"
     >
       <button
         {...attributes}
@@ -132,16 +132,6 @@ function ActivityRowImpl({
           </>
         )}
       </button>
-      {activity.tags.slice(0, 2).map((t) => (
-        <Badge key={t.id} color={t.color}>
-          {t.name}
-        </Badge>
-      ))}
-      {activity.tags.length > 2 && (
-        <span className="text-xs text-[var(--color-muted-foreground)]">
-          +{activity.tags.length - 2}
-        </span>
-      )}
       <div className="ml-auto flex items-center gap-3">
         {activity.assigneeInitials && (
           <Avatar

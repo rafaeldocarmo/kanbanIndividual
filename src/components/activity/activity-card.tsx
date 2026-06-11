@@ -5,7 +5,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Avatar, Badge, Dot } from "@/components/ui/badge";
+import { Avatar, Dot } from "@/components/ui/badge";
 import { priorityColor, cn } from "@/lib/utils";
 import type { ActivityView } from "@/lib/types";
 
@@ -70,15 +70,6 @@ function ActivityCardImpl({ activity, onClick, dragging }: Props) {
           )}
         </div>
       </div>
-      {activity.tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {activity.tags.map((t) => (
-            <Badge key={t.id} color={t.color}>
-              {t.name}
-            </Badge>
-          ))}
-        </div>
-      )}
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-[var(--color-muted-foreground)]">
         <div>
           {due && (

@@ -34,7 +34,6 @@ import {
   updateActivity,
 } from "@/app/actions/activities";
 import { useActivitiesContext } from "@/components/app-shell";
-import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;
@@ -109,10 +108,6 @@ export function ActivityDialog({
     const assignee = values.assigneeId
       ? assignees.find((a) => a.id === values.assigneeId)
       : null;
-    const selectedTags = (values.tagIds ?? [])
-      .map((id) => tags.find((t) => t.id === id))
-      .filter(Boolean)
-      .map((t) => ({ id: t!.id, name: t!.name, color: t!.color }));
 
     if (isEdit && initial) {
       const updated: ActivityView = {
@@ -129,7 +124,6 @@ export function ActivityDialog({
         assigneeName: assignee?.name ?? null,
         assigneeInitials: assignee?.initials ?? null,
         assigneeColor: assignee?.color ?? null,
-        tags: selectedTags,
         updatedAt: new Date(),
       };
       mutate({ type: "update", activity: updated }, () =>
@@ -165,7 +159,6 @@ export function ActivityDialog({
         assigneeName: assignee?.name ?? null,
         assigneeInitials: assignee?.initials ?? null,
         assigneeColor: assignee?.color ?? null,
-        tags: selectedTags,
         statusUpdates: statusHistory,
         lastStatus: payload.initialStatus || null,
       };
@@ -181,20 +174,6 @@ export function ActivityDialog({
   const journeyId = watch("journeyId");
   const assigneeId = watch("assigneeId");
   const priority = watch("priority");
-  const tagIds = watch("tagIds");
-
-  const toggleTag = (id: string) => {
-    const current = tagIds ?? [];
-    if (current.includes(id)) {
-      setValue(
-        "tagIds",
-        current.filter((t) => t !== id),
-        { shouldDirty: true },
-      );
-    } else {
-      setValue("tagIds", [...current, id], { shouldDirty: true });
-    }
-  };
 
   const [pendingStatus, setPendingStatus] = React.useState("");
 
@@ -329,42 +308,6 @@ export function ActivityDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-[var(--color-muted-foreground)]">
-              Tags
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {tags.map((t) => {
-                const active = tagIds?.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => toggleTag(t.id)}
-                    className={cn(
-                      "rounded-full border px-2.5 py-0.5 text-xs transition",
-                      active
-                        ? "border-transparent"
-                        : "border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)]",
-                    )}
-                    style={
-                      active
-                        ? { backgroundColor: `${t.color}22`, color: t.color }
-                        : undefined
-                    }
-                  >
-                    {t.name}
-                  </button>
-                );
-              })}
-              {tags.length === 0 && (
-                <span className="text-xs text-[var(--color-muted-foreground)]">
-                  Nenhuma tag disponível.
-                </span>
-              )}
             </div>
           </div>
 
