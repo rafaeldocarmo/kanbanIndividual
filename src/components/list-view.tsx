@@ -151,7 +151,14 @@ export function ListView({
     [activities, group, stages, journeys, assignees],
   );
 
-  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>(
+    () => {
+      const initial: Record<string, boolean> = {};
+      const done = stages.find((s) => s.name === "Concluído");
+      if (done) initial[done.id] = true;
+      return initial;
+    },
+  );
   const [activeId, setActiveId] = React.useState<string | null>(null);
 
   const sensors = useSensors(

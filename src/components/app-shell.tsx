@@ -3,10 +3,18 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { Toolbar } from "@/components/toolbar";
+import dynamic from "next/dynamic";
 import { ListView } from "@/components/list-view";
 import { BoardView } from "@/components/board-view";
 import { QuickAdd } from "@/components/quick-add";
-import { ActivityDialog } from "@/components/activity/activity-dialog";
+
+const ActivityDialog = dynamic(
+  () =>
+    import("@/components/activity/activity-dialog").then((m) => ({
+      default: m.ActivityDialog,
+    })),
+  { ssr: false },
+);
 import type {
   ActivityView,
   BootstrapData,
@@ -124,6 +132,8 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const everOpenedRef = React.useRef(false);
+  if (dialogOpen) everOpenedRef.current = true;
 
   const [optimisticActivities, applyOptimistic] = React.useOptimistic(
     data.activities,
@@ -151,8 +161,10 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
   );
 
   const openEdit = React.useCallback((a: ActivityView) => {
-    setEditingId(a.id);
-    setDialogOpen(true);
+    React.startTransition(() => {
+      setEditingId(a.id);
+      setDialogOpen(true);
+    });
   }, []);
 
   const editing = editingId
@@ -190,7 +202,7 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
             assignees={data.assignees}
           />
           <div className="flex-1 min-h-0 overflow-hidden bg-[var(--color-canvas)] px-4 py-3">
-            <div className="scrollbar-thin h-full overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm">
+            <div className="scrollbar-hide h-full overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm">
             {view === "board" ? (
               <BoardView
                 activities={filtered}
@@ -210,14 +222,16 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
             </div>
           </div>
         </div>
-        <ActivityDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          stages={data.stages}
-          journeys={data.journeys}
-          assignees={data.assignees}
-          initial={editing}
-        />
+        {everOpenedRef.current && (
+          <ActivityDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            stages={data.stages}
+            journeys={data.journeys}
+            assignees={data.assignees}
+            initial={editing}
+          />
+        )}
       </div>
     </ActivitiesContext.Provider>
   );
