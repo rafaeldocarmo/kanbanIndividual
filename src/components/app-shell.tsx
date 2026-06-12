@@ -15,6 +15,13 @@ const ActivityDialog = dynamic(
     })),
   { ssr: false },
 );
+const ActivityStatusDialog = dynamic(
+  () =>
+    import("@/components/activity/activity-status-dialog").then((m) => ({
+      default: m.ActivityStatusDialog,
+    })),
+  { ssr: false },
+);
 import type {
   ActivityView,
   BootstrapData,
@@ -34,8 +41,16 @@ export type Mutation =
       type: "move";
       id: string;
       stageId?: string;
+      stageName?: string | null;
+      stageColor?: string | null;
       journeyId?: string | null;
+      journeyName?: string | null;
+      journeyColor?: string | null;
       assigneeId?: string | null;
+      assigneeName?: string | null;
+      assigneeInitials?: string | null;
+      assigneeColor?: string | null;
+      position?: string;
     }
   | {
       type: "addStatus";
@@ -54,26 +69,33 @@ function reducer(state: ActivityView[], action: Mutation): ActivityView[] {
       );
     case "delete":
       return state.filter((a) => a.id !== action.id);
-    case "move":
-      return state.map((a) => {
+    case "move": {
+      const next = state.map((a) => {
         if (a.id !== action.id) return a;
-        return {
-          ...a,
-          stageId: action.stageId ?? a.stageId,
-          stageName:
-            action.stageId && action.stageId !== a.stageId
-              ? null
-              : a.stageName,
-          stageColor:
-            action.stageId && action.stageId !== a.stageId
-              ? null
-              : a.stageColor,
-          journeyId:
-            action.journeyId !== undefined ? action.journeyId : a.journeyId,
-          assigneeId:
-            action.assigneeId !== undefined ? action.assigneeId : a.assigneeId,
-        };
+        const out: ActivityView = { ...a };
+        if (action.stageId !== undefined) {
+          out.stageId = action.stageId;
+          out.stageName = action.stageName ?? null;
+          out.stageColor = action.stageColor ?? null;
+        }
+        if (action.journeyId !== undefined) {
+          out.journeyId = action.journeyId;
+          out.journeyName = action.journeyName ?? null;
+          out.journeyColor = action.journeyColor ?? null;
+        }
+        if (action.assigneeId !== undefined) {
+          out.assigneeId = action.assigneeId;
+          out.assigneeName = action.assigneeName ?? null;
+          out.assigneeInitials = action.assigneeInitials ?? null;
+          out.assigneeColor = action.assigneeColor ?? null;
+        }
+        if (action.position !== undefined) out.position = action.position;
+        return out;
       });
+      return next.sort(
+        (a, b) => Number(a.position) - Number(b.position),
+      );
+    }
     case "addStatus":
       return state.map((a) =>
         a.id === action.activityId
@@ -135,6 +157,11 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
   const everOpenedRef = React.useRef(false);
   if (dialogOpen) everOpenedRef.current = true;
 
+  const [statusOpen, setStatusOpen] = React.useState(false);
+  const [viewingId, setViewingId] = React.useState<string | null>(null);
+  const statusEverOpenedRef = React.useRef(false);
+  if (statusOpen) statusEverOpenedRef.current = true;
+
   const [optimisticActivities, applyOptimistic] = React.useOptimistic(
     data.activities,
     reducer,
@@ -162,13 +189,24 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
 
   const openEdit = React.useCallback((a: ActivityView) => {
     React.startTransition(() => {
+      setStatusOpen(false);
       setEditingId(a.id);
       setDialogOpen(true);
     });
   }, []);
 
+  const openView = React.useCallback((a: ActivityView) => {
+    React.startTransition(() => {
+      setViewingId(a.id);
+      setStatusOpen(true);
+    });
+  }, []);
+
   const editing = editingId
     ? optimisticActivities.find((a) => a.id === editingId) ?? null
+    : null;
+  const viewing = viewingId
+    ? optimisticActivities.find((a) => a.id === viewingId) ?? null
     : null;
 
   const filtered = React.useMemo(() => {
@@ -207,7 +245,7 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
               <BoardView
                 activities={filtered}
                 stages={data.stages}
-                onEdit={openEdit}
+                onView={openView}
               />
             ) : (
               <ListView
@@ -217,6 +255,7 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
                 assignees={data.assignees}
                 group={group}
                 onEdit={openEdit}
+                onView={openView}
               />
             )}
             </div>
@@ -230,6 +269,14 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
             journeys={data.journeys}
             assignees={data.assignees}
             initial={editing}
+          />
+        )}
+        {statusEverOpenedRef.current && (
+          <ActivityStatusDialog
+            open={statusOpen}
+            onOpenChange={setStatusOpen}
+            activity={viewing}
+            onEdit={openEdit}
           />
         )}
       </div>

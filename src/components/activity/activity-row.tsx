@@ -13,7 +13,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge, Avatar, Dot } from "@/components/ui/badge";
+import { Badge, Avatar, PriorityBubble } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,7 @@ type Props = {
   activity: ActivityView;
   stages: Stage[];
   onEdit: (a: ActivityView) => void;
+  onView: (a: ActivityView) => void;
   showStage?: boolean;
 };
 
@@ -46,6 +47,7 @@ function ActivityRowImpl({
   activity,
   stages,
   onEdit,
+  onView,
   showStage = true,
 }: Props) {
   const { mutate } = useActivitiesContext();
@@ -106,19 +108,17 @@ function ActivityRowImpl({
       >
         <GripVertical className="h-4 w-4 text-[var(--color-muted-foreground)]" />
       </button>
-      <Dot color={priorityColor(activity.priority)} />
+      <PriorityBubble
+        color={priorityColor(activity.priority)}
+        title={`Prioridade ${activity.priority}`}
+      />
       <button
-        onClick={() => onEdit(activity)}
+        onClick={() => onView(activity)}
         className="flex-1 min-w-0 text-left text-sm"
       >
         {activity.journeyName && (
           <>
-            <span
-              className="font-semibold"
-              style={{ color: activity.journeyColor ?? undefined }}
-            >
-              {activity.journeyName}
-            </span>
+            <span className="font-semibold">{activity.journeyName}</span>
             <span className="text-[var(--color-muted-foreground)]"> — </span>
           </>
         )}
@@ -146,9 +146,7 @@ function ActivityRowImpl({
           </span>
         )}
         {showStage && activity.stageName && (
-          <Badge color={activity.stageColor ?? undefined}>
-            {activity.stageName}
-          </Badge>
+          <Badge>{activity.stageName}</Badge>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -181,7 +179,6 @@ function ActivityRowImpl({
                     onSelect={() => handleMove(s.id)}
                     disabled={s.id === activity.stageId}
                   >
-                    <Dot color={s.color} />
                     {s.name}
                   </DropdownMenuItem>
                 ))}

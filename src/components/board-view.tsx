@@ -19,7 +19,6 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { ActivityCard } from "@/components/activity/activity-card";
-import { Dot } from "@/components/ui/badge";
 import type { ActivityView } from "@/lib/types";
 import type { Stage } from "@/db/schema";
 import { moveActivity } from "@/app/actions/activities";
@@ -29,17 +28,17 @@ import { useActivitiesContext } from "@/components/app-shell";
 type Props = {
   activities: ActivityView[];
   stages: Stage[];
-  onEdit: (a: ActivityView) => void;
+  onView: (a: ActivityView) => void;
 };
 
 function Column({
   stage,
   items,
-  onEdit,
+  onCardClick,
 }: {
   stage: Stage;
   items: ActivityView[];
-  onEdit: (a: ActivityView) => void;
+  onCardClick: (a: ActivityView) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `stage:${stage.id}`,
@@ -48,7 +47,6 @@ function Column({
   return (
     <div className="flex w-72 shrink-0 flex-col rounded-lg bg-[var(--color-muted)] p-2">
       <div className="flex items-center gap-2 px-2 py-1.5">
-        <Dot color={stage.color} />
         <span className="text-sm font-semibold">{stage.name}</span>
         <span className="ml-auto text-xs text-[var(--color-muted-foreground)]">
           {items.length}
@@ -66,7 +64,7 @@ function Column({
           }
         >
           {items.map((a) => (
-            <ActivityCard key={a.id} activity={a} onClick={onEdit} />
+            <ActivityCard key={a.id} activity={a} onClick={onCardClick} />
           ))}
         </div>
       </SortableContext>
@@ -74,7 +72,7 @@ function Column({
   );
 }
 
-export function BoardView({ activities, stages, onEdit }: Props) {
+export function BoardView({ activities, stages, onView }: Props) {
   const { mutate } = useActivitiesContext();
   const [activeId, setActiveId] = React.useState<string | null>(null);
   // Ephemeral cross-column preview while dragging.
@@ -200,7 +198,7 @@ export function BoardView({ activities, stages, onEdit }: Props) {
             key={s.id}
             stage={s}
             items={byStage.get(s.id) ?? []}
-            onEdit={onEdit}
+            onCardClick={onView}
           />
         ))}
       </div>

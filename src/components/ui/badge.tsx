@@ -38,12 +38,11 @@ export function Avatar({
   return (
     <span
       title={title}
-      className="inline-flex shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+      className="inline-flex shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-[var(--color-foreground)]"
       style={{
         width: size,
         height: size,
-        backgroundColor: color ? `${color}33` : "var(--color-accent)",
-        color: color ?? "var(--color-foreground)",
+        backgroundColor: color ? `${color}33` : "var(--color-muted)",
       }}
     >
       {initials}
@@ -57,6 +56,25 @@ export function Dot({ color }: { color: string }) {
       aria-hidden
       className="inline-block h-2 w-2 shrink-0 rounded-full"
       style={{ backgroundColor: color }}
+    />
+  );
+}
+
+export function PriorityBubble({
+  color,
+  size = 14,
+  title,
+}: {
+  color: string;
+  size?: number;
+  title?: string;
+}) {
+  return (
+    <span
+      aria-hidden
+      title={title}
+      className="inline-block shrink-0 rounded-full"
+      style={{ width: size, height: size, backgroundColor: color }}
     />
   );
 }

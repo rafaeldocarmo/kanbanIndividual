@@ -5,7 +5,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Avatar, Dot } from "@/components/ui/badge";
+import { Avatar, PriorityBubble } from "@/components/ui/badge";
 import { priorityColor, cn } from "@/lib/utils";
 import type { ActivityView } from "@/lib/types";
 
@@ -46,16 +46,14 @@ function ActivityCardImpl({ activity, onClick, dragging }: Props) {
       )}
     >
       <div className="flex items-start gap-2">
-        <Dot color={priorityColor(activity.priority)} />
+        <PriorityBubble
+          color={priorityColor(activity.priority)}
+          title={`Prioridade ${activity.priority}`}
+        />
         <div className="flex-1 leading-snug">
           {activity.journeyName && (
             <>
-              <span
-                className="font-semibold"
-                style={{ color: activity.journeyColor ?? undefined }}
-              >
-                {activity.journeyName}
-              </span>
+              <span className="font-semibold">{activity.journeyName}</span>
               <span className="text-[var(--color-muted-foreground)]"> — </span>
             </>
           )}

@@ -16,8 +16,8 @@ export function getInitials(name: string) {
 
 const PRIORITY_COLORS: Record<string, string> = {
   high: "#ef4444",
-  medium: "#f59e0b",
-  low: "#94a3b8",
+  medium: "#eab308",
+  low: "#3b82f6",
 };
 
 export function priorityColor(priority: string | null | undefined) {

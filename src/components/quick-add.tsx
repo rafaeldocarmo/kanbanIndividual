@@ -1,10 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Layers, Route, User, ChevronDown } from "lucide-react";
+import { Layers, Route, User, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -145,40 +144,30 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
   return (
     <div className="border-b border-[var(--color-border)] bg-[var(--color-canvas)] px-4 py-3">
       <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm">
-        {/* Primary row: name + chevron + CTA */}
+        {/* Primary row: chevron toggle + name input */}
         <div className="flex items-center gap-2 p-3">
-          <div className="relative flex-1">
-            <Plus className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-            <Input
-              ref={nameRef}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={onEnter}
-              placeholder="Nome da atividade"
-              className="h-10 border-transparent bg-[var(--color-muted)] pl-9 text-sm font-medium placeholder:font-normal focus-visible:bg-[var(--color-card)]"
-            />
-          </div>
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
             aria-label={expanded ? "Recolher opções" : "Mais opções"}
-            className={cn(
-              "flex h-10 items-center gap-1.5 rounded-md border border-[var(--color-border)] px-3 text-xs font-medium text-[var(--color-muted-foreground)] transition hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]",
-              expanded && "bg-[var(--color-muted)] text-[var(--color-foreground)]",
-            )}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-[var(--color-muted-foreground)] transition hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
           >
-            Opções
             <ChevronDown
               className={cn(
-                "h-3.5 w-3.5 transition-transform",
+                "h-4 w-4 transition-transform",
                 expanded && "rotate-180",
               )}
             />
           </button>
-          <Button onClick={submit} className="h-10 px-4">
-            Adicionar
-          </Button>
+          <Input
+            ref={nameRef}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={onEnter}
+            placeholder="Nome da atividade (Enter para criar)"
+            className="h-10 flex-1 border-transparent bg-[var(--color-muted)] text-sm font-medium placeholder:font-normal focus-visible:bg-[var(--color-card)]"
+          />
         </div>
 
         {/* Accordion: only visible when expanded */}

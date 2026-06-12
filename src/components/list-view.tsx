@@ -7,25 +7,26 @@ import {
   DragOverlay,
   PointerSensor,
   KeyboardSensor,
-  closestCenter,
+  closestCorners,
   useSensor,
   useSensors,
   useDroppable,
   type DragEndEvent,
   type DragStartEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   verticalListSortingStrategy,
   sortableKeyboardCoordinates,
+  arrayMove,
 } from "@dnd-kit/sortable";
-import { Dot } from "@/components/ui/badge";
 import { ActivityRow } from "@/components/activity/activity-row";
 import type { ActivityView, GroupBy } from "@/lib/types";
 import type { Assignee, Journey, Stage } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { moveActivity } from "@/app/actions/activities";
-import { useActivitiesContext } from "@/components/app-shell";
+import { useActivitiesContext, type Mutation } from "@/components/app-shell";
 
 type Props = {
   activities: ActivityView[];
@@ -34,12 +35,12 @@ type Props = {
   assignees: Assignee[];
   group: GroupBy;
   onEdit: (a: ActivityView) => void;
+  onView: (a: ActivityView) => void;
 };
 
 type Group = {
   key: string;
   name: string;
-  color: string;
   items: ActivityView[];
 };
 
@@ -54,7 +55,6 @@ function groupActivities(
     return stages.map((s) => ({
       key: s.id,
       name: s.name,
-      color: s.color,
       items: activities.filter((a) => a.stageId === s.id),
     }));
   }
@@ -62,33 +62,21 @@ function groupActivities(
     const groups: Group[] = journeys.map((j) => ({
       key: j.id,
       name: j.name,
-      color: j.color,
       items: activities.filter((a) => a.journeyId === j.id),
     }));
     const orphans = activities.filter((a) => !a.journeyId);
     if (orphans.length)
-      groups.push({
-        key: "_none",
-        name: "Sem jornada",
-        color: "#94a3b8",
-        items: orphans,
-      });
+      groups.push({ key: "_none", name: "Sem jornada", items: orphans });
     return groups;
   }
   const groups: Group[] = assignees.map((a) => ({
     key: a.id,
     name: a.name,
-    color: a.color,
     items: activities.filter((act) => act.assigneeId === a.id),
   }));
   const orphans = activities.filter((a) => !a.assigneeId);
   if (orphans.length)
-    groups.push({
-      key: "_none",
-      name: "Sem responsável",
-      color: "#94a3b8",
-      items: orphans,
-    });
+    groups.push({ key: "_none", name: "Sem responsável", items: orphans });
   return groups;
 }
 
@@ -103,19 +91,8 @@ function GroupSection({
   onToggle: () => void;
   children: React.ReactNode;
 }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `group:${group.key}`,
-    data: { type: "group", groupKey: group.key },
-  });
-
   return (
-    <section
-      ref={setNodeRef}
-      className={cn(
-        "border-b border-[var(--color-border)] last:border-b-0 transition-colors",
-        isOver && "bg-[var(--color-accent)]",
-      )}
-    >
+    <section className="border-b border-[var(--color-border)] last:border-b-0">
       <button
         onClick={onToggle}
         className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-[var(--color-muted)]"
@@ -125,7 +102,6 @@ function GroupSection({
         ) : (
           <ChevronDown className="h-4 w-4 text-[var(--color-muted-foreground)]" />
         )}
-        <Dot color={group.color} />
         <span className="text-sm font-semibold">{group.name}</span>
         <span className="ml-1 rounded-full bg-[var(--color-muted)] px-2 py-0.5 text-xs text-[var(--color-muted-foreground)]">
           {group.items.length}
@@ -136,6 +112,64 @@ function GroupSection({
   );
 }
 
+function GroupDrop({
+  groupKey,
+  items,
+  stages,
+  onEdit,
+  onView,
+  showStage,
+}: {
+  groupKey: string;
+  items: ActivityView[];
+  stages: Stage[];
+  onEdit: (a: ActivityView) => void;
+  onView: (a: ActivityView) => void;
+  showStage: boolean;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `group:${groupKey}`,
+    data: { type: "group", groupKey },
+  });
+  return (
+    <SortableContext
+      items={items.map((a) => a.id)}
+      strategy={verticalListSortingStrategy}
+    >
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "min-h-[8px]",
+          isOver && items.length === 0 && "bg-[var(--color-accent)]",
+        )}
+      >
+        {items.map((a) => (
+          <ActivityRow
+            key={a.id}
+            activity={a}
+            stages={stages}
+            onEdit={onEdit}
+            onView={onView}
+            showStage={showStage}
+          />
+        ))}
+      </div>
+    </SortableContext>
+  );
+}
+
+function computePositionBetween(
+  before: ActivityView | null,
+  after: ActivityView | null,
+): number {
+  const beforePos = before ? Number(before.position) : null;
+  const afterPos = after ? Number(after.position) : null;
+  if (beforePos !== null && afterPos !== null) return (beforePos + afterPos) / 2;
+  if (beforePos !== null) return beforePos + 1000;
+  if (afterPos !== null) return afterPos - 1000;
+  return 1000;
+}
+
 export function ListView({
   activities,
   stages,
@@ -143,13 +177,45 @@ export function ListView({
   assignees,
   group,
   onEdit,
+  onView,
 }: Props) {
   const { mutate } = useActivitiesContext();
 
+  // Live preview of cross-group drag while dragging
+  const [previewGroupKey, setPreviewGroupKey] = React.useState<{
+    id: string;
+    key: string;
+  } | null>(null);
+
+  // Apply preview to derive the activity set used for rendering during drag.
+  const effective = React.useMemo(() => {
+    if (!previewGroupKey) return activities;
+    return activities.map((a) => {
+      if (a.id !== previewGroupKey.id) return a;
+      if (group === "status") return { ...a, stageId: previewGroupKey.key };
+      if (group === "journey")
+        return {
+          ...a,
+          journeyId: previewGroupKey.key === "_none" ? null : previewGroupKey.key,
+        };
+      return {
+        ...a,
+        assigneeId: previewGroupKey.key === "_none" ? null : previewGroupKey.key,
+      };
+    });
+  }, [activities, previewGroupKey, group]);
+
   const groups = React.useMemo(
-    () => groupActivities(activities, group, stages, journeys, assignees),
-    [activities, group, stages, journeys, assignees],
+    () => groupActivities(effective, group, stages, journeys, assignees),
+    [effective, group, stages, journeys, assignees],
   );
+
+  // Fast id → groupKey lookup
+  const groupIndex = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const g of groups) for (const a of g.items) map.set(a.id, g.key);
+    return map;
+  }, [groups]);
 
   const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>(
     () => {
@@ -166,48 +232,133 @@ export function ListView({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const findGroupKey = (activityId: string): string | undefined => {
-    for (const g of groups) {
-      if (g.items.some((a) => a.id === activityId)) return g.key;
-    }
-    return undefined;
-  };
+  const resolveTargetGroupKey = React.useCallback(
+    (overId: string, overData: { type?: string; groupKey?: string } | undefined) => {
+      if (overData?.type === "group") return overData.groupKey ?? null;
+      return groupIndex.get(overId) ?? null;
+    },
+    [groupIndex],
+  );
+
+  // Original group of an activity (from props, *not* the preview-applied state).
+  // Used to detect "back to origin" without bouncing on the preview itself.
+  const originalGroupOf = React.useCallback(
+    (id: string): string | null => {
+      const a = activities.find((x) => x.id === id);
+      if (!a) return null;
+      if (group === "status") return a.stageId;
+      if (group === "journey") return a.journeyId ?? "_none";
+      return a.assigneeId ?? "_none";
+    },
+    [activities, group],
+  );
 
   const handleDragStart = (e: DragStartEvent) => {
     setActiveId(e.active.id as string);
   };
 
+  const handleDragOver = (e: DragOverEvent) => {
+    const { active, over } = e;
+    if (!over) return;
+    const overData = over.data.current as
+      | { type?: string; groupKey?: string }
+      | undefined;
+    const targetKey = resolveTargetGroupKey(over.id as string, overData);
+    if (!targetKey) return;
+    const originalKey = originalGroupOf(active.id as string);
+    if (!originalKey) return;
+    if (originalKey === targetKey) {
+      // back to origin — drop the preview if any
+      setPreviewGroupKey((prev) => (prev ? null : prev));
+      return;
+    }
+    setPreviewGroupKey((prev) =>
+      prev?.id === active.id && prev.key === targetKey
+        ? prev
+        : { id: active.id as string, key: targetKey },
+    );
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setPreviewGroupKey(null);
+  };
+
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
+    const activeIdStr = active.id as string;
     setActiveId(null);
+    setPreviewGroupKey(null);
     if (!over) return;
 
     const overData = over.data.current as
       | { type?: string; groupKey?: string }
       | undefined;
-    const targetGroupKey =
-      overData?.type === "group" ? overData.groupKey! : findGroupKey(over.id as string);
-    if (!targetGroupKey) return;
+    const targetKey = resolveTargetGroupKey(over.id as string, overData);
+    if (!targetKey) return;
 
-    const targetGroup = groups.find((g) => g.key === targetGroupKey);
+    const targetGroup = groups.find((g) => g.key === targetKey);
     if (!targetGroup) return;
 
-    const siblings = targetGroup.items.filter((a) => a.id !== active.id);
-    let beforeId: string | null = null;
-    let afterId: string | null = null;
+    // Use the items in target group (which already include the active item if
+    // preview placed it there). Compute newIndex relative to this list.
+    const targetItems = targetGroup.items;
+    const oldIndex = targetItems.findIndex((a) => a.id === activeIdStr);
 
-    if (overData?.type !== "group") {
-      const overIdx = siblings.findIndex((a) => a.id === over.id);
-      if (overIdx >= 0) {
-        beforeId = siblings[overIdx - 1]?.id ?? null;
-        afterId = siblings[overIdx]?.id ?? null;
-      } else {
-        beforeId = siblings[siblings.length - 1]?.id ?? null;
-      }
+    let newIndex: number;
+    if (overData?.type === "group") {
+      // Dropped on droppable region (empty space / below last item)
+      newIndex = oldIndex >= 0 ? targetItems.length - 1 : targetItems.length;
     } else {
-      beforeId = siblings[siblings.length - 1]?.id ?? null;
+      newIndex = targetItems.findIndex((a) => a.id === over.id);
+      if (newIndex < 0) {
+        newIndex = oldIndex >= 0 ? targetItems.length - 1 : targetItems.length;
+      }
     }
 
+    // Build the final ordering (same logic as @dnd-kit's arrayMove)
+    let finalItems: ActivityView[];
+    if (oldIndex >= 0) {
+      finalItems = arrayMove(targetItems, oldIndex, newIndex);
+    } else {
+      const moving = activities.find((a) => a.id === activeIdStr);
+      if (!moving) return;
+      finalItems = [
+        ...targetItems.slice(0, newIndex),
+        moving,
+        ...targetItems.slice(newIndex),
+      ];
+    }
+
+    const finalIdx = finalItems.findIndex((a) => a.id === activeIdStr);
+    const beforeNeighbor = finalItems[finalIdx - 1] ?? null;
+    const afterNeighbor = finalItems[finalIdx + 1] ?? null;
+    const beforeId = beforeNeighbor?.id ?? null;
+    const afterId = afterNeighbor?.id ?? null;
+
+    // No-op: same group + same position
+    const originalGroupKey =
+      group === "status"
+        ? activities.find((a) => a.id === activeIdStr)?.stageId
+        : group === "journey"
+          ? activities.find((a) => a.id === activeIdStr)?.journeyId ?? "_none"
+          : activities.find((a) => a.id === activeIdStr)?.assigneeId ?? "_none";
+
+    if (
+      originalGroupKey === targetKey &&
+      oldIndex >= 0 &&
+      oldIndex === newIndex
+    ) {
+      return;
+    }
+
+    const newPos = computePositionBetween(beforeNeighbor, afterNeighbor);
+
+    const action: Mutation = {
+      type: "move",
+      id: activeIdStr,
+      position: newPos.toString(),
+    };
     const payload: {
       id: string;
       toStageId?: string;
@@ -215,42 +366,46 @@ export function ListView({
       toAssigneeId?: string | null;
       beforeId?: string | null;
       afterId?: string | null;
-    } = { id: active.id as string, beforeId, afterId };
-
-    const moveAction: {
-      type: "move";
-      id: string;
-      stageId?: string;
-      journeyId?: string | null;
-      assigneeId?: string | null;
-    } = { type: "move", id: active.id as string };
+    } = { id: activeIdStr, beforeId, afterId };
 
     if (group === "status") {
-      payload.toStageId = targetGroupKey;
-      moveAction.stageId = targetGroupKey;
+      const stage = stages.find((s) => s.id === targetKey);
+      payload.toStageId = targetKey;
+      action.stageId = targetKey;
+      action.stageName = stage?.name ?? null;
+      action.stageColor = stage?.color ?? null;
     } else if (group === "journey") {
-      const v = targetGroupKey === "_none" ? null : targetGroupKey;
+      const v = targetKey === "_none" ? null : targetKey;
+      const j = v ? journeys.find((x) => x.id === v) : null;
       payload.toJourneyId = v;
-      moveAction.journeyId = v;
-    } else if (group === "assignee") {
-      const v = targetGroupKey === "_none" ? null : targetGroupKey;
+      action.journeyId = v;
+      action.journeyName = j?.name ?? null;
+      action.journeyColor = j?.color ?? null;
+    } else {
+      const v = targetKey === "_none" ? null : targetKey;
+      const u = v ? assignees.find((x) => x.id === v) : null;
       payload.toAssigneeId = v;
-      moveAction.assigneeId = v;
+      action.assigneeId = v;
+      action.assigneeName = u?.name ?? null;
+      action.assigneeInitials = u?.initials ?? null;
+      action.assigneeColor = u?.color ?? null;
     }
 
-    mutate(moveAction, () => moveActivity(payload));
+    mutate(action, () => moveActivity(payload));
   };
 
   const activeActivity = activeId
-    ? activities.find((a) => a.id === activeId)
+    ? effective.find((a) => a.id === activeId)
     : null;
   const nonEmpty = groups.filter((g) => g.items.length > 0);
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={closestCorners}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragCancel={handleDragCancel}
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col">
@@ -266,22 +421,14 @@ export function ListView({
               }
             >
               {!isCollapsed && (
-                <SortableContext
-                  items={g.items.map((a) => a.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div>
-                    {g.items.map((a) => (
-                      <ActivityRow
-                        key={a.id}
-                        activity={a}
-                        stages={stages}
-                        onEdit={onEdit}
-                        showStage={group !== "status"}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
+                <GroupDrop
+                  groupKey={g.key}
+                  items={g.items}
+                  stages={stages}
+                  onEdit={onEdit}
+                  onView={onView}
+                  showStage={group !== "status"}
+                />
               )}
             </GroupSection>
           );
@@ -292,7 +439,7 @@ export function ListView({
           </div>
         )}
       </div>
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeActivity ? (
           <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm shadow-lg">
             {activeActivity.name}
