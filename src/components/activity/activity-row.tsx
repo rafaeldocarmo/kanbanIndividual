@@ -25,7 +25,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown";
-import { priorityColor } from "@/lib/utils";
+import { cn, priorityColor } from "@/lib/utils";
 import type { ActivityView } from "@/lib/types";
 import type { Stage } from "@/db/schema";
 import {
@@ -52,6 +52,7 @@ function ActivityRowImpl({
 }: Props) {
   const { mutate } = useActivitiesContext();
   const due = activity.dueDate ? parseISO(activity.dueDate) : null;
+  const isDone = activity.stageName === "Concluído";
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
       id: activity.id,
@@ -114,7 +115,10 @@ function ActivityRowImpl({
       />
       <button
         onClick={() => onView(activity)}
-        className="flex-1 min-w-0 text-left text-sm"
+        className={cn(
+          "flex-1 min-w-0 text-left text-sm",
+          isDone && "line-through text-[var(--color-muted-foreground)]",
+        )}
       >
         {activity.journeyName && (
           <>

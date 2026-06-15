@@ -4,6 +4,9 @@ import {
   activityStatusUpdates,
   assignees,
   journeys,
+  links,
+  notes,
+  reminders,
   stages,
 } from "./schema";
 import { asc, eq, sql, desc } from "drizzle-orm";
@@ -132,6 +135,22 @@ export function ensureDefaults(): Promise<void> {
   });
 
   return defaultsPromise;
+}
+
+export async function getNotes() {
+  return db.select().from(notes).orderBy(desc(notes.createdAt));
+}
+
+export async function getReminders() {
+  // Pendentes antes de concluídos; dentro de cada grupo, por data (nulls por último).
+  return db
+    .select()
+    .from(reminders)
+    .orderBy(asc(reminders.done), asc(reminders.dueDate), asc(reminders.createdAt));
+}
+
+export async function getLinks() {
+  return db.select().from(links).orderBy(desc(links.createdAt));
 }
 
 export async function nextPositionForStage(stageId: string): Promise<number> {

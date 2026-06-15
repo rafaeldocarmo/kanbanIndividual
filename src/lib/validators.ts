@@ -40,3 +40,31 @@ export const stageInput = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional(),
 });
+
+// --- Notas & Lembretes ---
+
+export const noteInput = z.object({
+  title: z.string().trim().max(200).optional().nullable(),
+  content: z.string().trim().min(1, "Escreva algo").max(5000),
+});
+export type NoteInput = z.infer<typeof noteInput>;
+
+const dateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida")
+  .optional()
+  .nullable();
+
+export const reminderInput = z.object({
+  content: z.string().trim().min(1, "Escreva um lembrete").max(300),
+  dueDate: dateString,
+  done: z.boolean().optional(),
+});
+export type ReminderInput = z.infer<typeof reminderInput>;
+
+export const linkInput = z.object({
+  title: z.string().trim().min(1, "Título obrigatório").max(200),
+  url: z.string().trim().min(1, "URL obrigatória").max(2048),
+  category: z.string().trim().max(80).optional().nullable(),
+});
+export type LinkInput = z.infer<typeof linkInput>;

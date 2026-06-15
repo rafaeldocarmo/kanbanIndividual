@@ -37,6 +37,7 @@ pnpm dev          # http://localhost:3000
 - Filtros e visão persistem na URL (shareable)
 - **Atalhos**: `N` nova atividade, `/` focar busca, `Esc` fechar modal
 - Optimistic UI no DnD com rollback em falha
+- **Notas & Lembretes** (`/notas`): espaço pessoal com notas, lembretes (data + concluído) e links — CRUD com optimistic UI, sem toasts de sucesso
 
 ## Arquitetura
 
@@ -50,6 +51,10 @@ activities (id, name, description, due_date,
             stage_id, journey_id, assignee_id,
             priority, position numeric,
             created_at, updated_at)
+
+notes      (id, title?, content, created_at, updated_at)
+reminders  (id, content, due_date?, done, created_at, updated_at)
+links      (id, title, url, category?, created_at, updated_at)
 ```
 
 - `stages` em tabela própria → novas etapas sem migration
@@ -62,12 +67,15 @@ activities (id, name, description, due_date,
 src/
   app/
     page.tsx               -- server: carrega tudo via Promise.all e passa para o shell
+    notas/page.tsx         -- server: carrega notas/lembretes/links e passa para o NotesShell
     actions/
       activities.ts        -- create/update/delete/duplicate/move (com zod + revalidate)
       meta.ts              -- create stage/journey/assignee
+      notes.ts             -- CRUD de notas, lembretes e links (zod + revalidate)
     layout.tsx, globals.css
   components/
     app-shell.tsx          -- estado client (busca/view/group/dialog)
+    notes/                 -- NotesShell (useOptimistic), composer, cards e linhas
     toolbar.tsx            -- busca, agrupar, alternar visão, novo
     list-view.tsx          -- agrupamento dinâmico
     board-view.tsx         -- DnD com @dnd-kit

@@ -8,6 +8,7 @@ import {
   pgEnum,
   index,
   date,
+  boolean,
   primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -125,6 +126,64 @@ export const activityStatusUpdates = pgTable(
   }),
 );
 
+// --- Notas & Lembretes (espaço pessoal) ---
+
+export const notes = pgTable(
+  "notes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title"),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdIdx: index("notes_created_idx").on(t.createdAt),
+  }),
+);
+
+export const reminders = pgTable(
+  "reminders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    content: text("content").notNull(),
+    dueDate: date("due_date"),
+    done: boolean("done").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    dueIdx: index("reminders_due_idx").on(t.done, t.dueDate),
+  }),
+);
+
+export const links = pgTable(
+  "links",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    category: text("category"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdIdx: index("links_created_idx").on(t.createdAt),
+  }),
+);
+
 export const stagesRelations = relations(stages, ({ many }) => ({
   activities: many(activities),
 }));
@@ -180,3 +239,6 @@ export type Tag = typeof tags.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
 export type ActivityStatusUpdate = typeof activityStatusUpdates.$inferSelect;
 export type Priority = (typeof priorityEnum.enumValues)[number];
+export type Note = typeof notes.$inferSelect;
+export type Reminder = typeof reminders.$inferSelect;
+export type LinkItem = typeof links.$inferSelect;

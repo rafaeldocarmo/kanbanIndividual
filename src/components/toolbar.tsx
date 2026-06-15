@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Search, Sun, Moon } from "lucide-react";
+import Link from "next/link";
+import { Search, Sun, Moon, StickyNote } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,12 @@ export function Toolbar({
             Quadro
           </SegButton>
         </div>
+
+        <Button variant="ghost" size="icon" asChild aria-label="Notas & Lembretes">
+          <Link href="/notas" title="Notas & Lembretes">
+            <StickyNote className="h-4 w-4" />
+          </Link>
+        </Button>
 
         <Button
           variant="ghost"
