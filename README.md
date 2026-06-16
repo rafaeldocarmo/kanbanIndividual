@@ -38,6 +38,7 @@ pnpm dev          # http://localhost:3000
 - **Atalhos**: `N` nova atividade, `/` focar busca, `Esc` fechar modal
 - Optimistic UI no DnD com rollback em falha
 - **Notas & Lembretes** (`/notas`): espaço pessoal com notas, lembretes (data + concluído) e links — CRUD com optimistic UI, sem toasts de sucesso
+- **Queries** (`/queries`): salvar queries de banco com título e copiar com um clique — CRUD com optimistic UI
 
 ## Arquitetura
 
@@ -52,9 +53,10 @@ activities (id, name, description, due_date,
             priority, position numeric,
             created_at, updated_at)
 
-notes      (id, title?, content, created_at, updated_at)
-reminders  (id, content, due_date?, done, created_at, updated_at)
-links      (id, title, url, category?, created_at, updated_at)
+notes        (id, title?, content, created_at, updated_at)
+reminders    (id, content, due_date?, done, created_at, updated_at)
+links        (id, title, url, category?, created_at, updated_at)
+saved_queries(id, title, query, created_at, updated_at)
 ```
 
 - `stages` em tabela própria → novas etapas sem migration

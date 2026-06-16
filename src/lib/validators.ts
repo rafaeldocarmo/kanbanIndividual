@@ -68,3 +68,9 @@ export const linkInput = z.object({
   category: z.string().trim().max(80).optional().nullable(),
 });
 export type LinkInput = z.infer<typeof linkInput>;
+
+export const savedQueryInput = z.object({
+  title: z.string().trim().min(1, "Título obrigatório").max(200),
+  query: z.string().trim().min(1, "Escreva a query").max(20000),
+});
+export type SavedQueryInput = z.infer<typeof savedQueryInput>;

@@ -7,6 +7,7 @@ import {
   links,
   notes,
   reminders,
+  savedQueries,
   stages,
 } from "./schema";
 import { asc, eq, sql, desc } from "drizzle-orm";
@@ -151,6 +152,13 @@ export async function getReminders() {
 
 export async function getLinks() {
   return db.select().from(links).orderBy(desc(links.createdAt));
+}
+
+export async function getSavedQueries() {
+  return db
+    .select()
+    .from(savedQueries)
+    .orderBy(desc(savedQueries.createdAt));
 }
 
 export async function nextPositionForStage(stageId: string): Promise<number> {

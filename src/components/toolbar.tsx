@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Search, Sun, Moon, StickyNote } from "lucide-react";
+import { Search, Sun, Moon, StickyNote, Database } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,12 @@ export function Toolbar({
         <Button variant="ghost" size="icon" asChild aria-label="Notas & Lembretes">
           <Link href="/notas" title="Notas & Lembretes">
             <StickyNote className="h-4 w-4" />
+          </Link>
+        </Button>
+
+        <Button variant="ghost" size="icon" asChild aria-label="Queries">
+          <Link href="/queries" title="Queries">
+            <Database className="h-4 w-4" />
           </Link>
         </Button>
 

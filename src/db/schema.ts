@@ -184,6 +184,24 @@ export const links = pgTable(
   }),
 );
 
+export const savedQueries = pgTable(
+  "saved_queries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    query: text("query").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdIdx: index("saved_queries_created_idx").on(t.createdAt),
+  }),
+);
+
 export const stagesRelations = relations(stages, ({ many }) => ({
   activities: many(activities),
 }));
@@ -242,3 +260,4 @@ export type Priority = (typeof priorityEnum.enumValues)[number];
 export type Note = typeof notes.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;
 export type LinkItem = typeof links.$inferSelect;
+export type SavedQuery = typeof savedQueries.$inferSelect;
