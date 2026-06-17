@@ -2,13 +2,19 @@
 
 import { db } from "@/db/client";
 import { activities, activityStatusUpdates } from "@/db/schema";
-import { nextPositionForStage } from "@/db/queries";
+import { CACHE_TAGS, nextPositionForStage } from "@/db/queries";
 import { activityInput, statusUpdateInput } from "@/lib/validators";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
+
+/** Invalida o cache de atividades e atualiza a rota do Kanban. */
+function revalidateActivities() {
+  revalidateTag(CACHE_TAGS.activities);
+  revalidatePath("/");
+}
 
 export async function createActivity(input: unknown): Promise<ActionResult> {
   const parsed = activityInput.safeParse(input);
@@ -37,7 +43,7 @@ export async function createActivity(input: unknown): Promise<ActionResult> {
     });
   }
 
-  revalidatePath("/");
+  revalidateActivities();
   return { ok: true };
 }
 
@@ -67,7 +73,7 @@ export async function updateActivity(input: unknown): Promise<ActionResult> {
     });
   }
 
-  revalidatePath("/");
+  revalidateActivities();
   return { ok: true };
 }
 
@@ -84,7 +90,7 @@ export async function addStatusUpdate(input: unknown): Promise<ActionResult> {
     .update(activities)
     .set({ updatedAt: new Date() })
     .where(eq(activities.id, parsed.data.activityId));
-  revalidatePath("/");
+  revalidateActivities();
   return { ok: true };
 }
 
@@ -93,7 +99,7 @@ export async function deleteStatusUpdate(id: string): Promise<ActionResult> {
     return { ok: false, error: "ID inválido" };
   }
   await db.delete(activityStatusUpdates).where(eq(activityStatusUpdates.id, id));
-  revalidatePath("/");
+  revalidateActivities();
   return { ok: true };
 }
 
@@ -102,7 +108,7 @@ export async function deleteActivity(id: string): Promise<ActionResult> {
     return { ok: false, error: "ID inválido" };
   }
   await db.delete(activities).where(eq(activities.id, id));
-  revalidatePath("/");
+  revalidateActivities();
   return { ok: true };
 }
 
@@ -127,7 +133,7 @@ export async function duplicateActivity(id: string): Promise<ActionResult> {
     position: position.toString(),
   });
 
-  revalidatePath("/");
+  revalidateActivities();
   return { ok: true };
 }
 
@@ -199,6 +205,6 @@ export async function moveActivity(input: unknown): Promise<ActionResult> {
 
   await db.update(activities).set(updates).where(eq(activities.id, id));
 
-  revalidatePath("/");
+  revalidateActivities();
   return { ok: true };
 }

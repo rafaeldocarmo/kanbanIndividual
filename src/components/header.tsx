@@ -33,6 +33,7 @@ export function Header() {
       <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center gap-3 px-4">
         <Link
           href="/"
+          prefetch
           className="mr-2 flex shrink-0 items-center gap-2 font-semibold tracking-tight"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--color-primary)] text-[var(--color-primary-foreground)]">
@@ -48,6 +49,7 @@ export function Header() {
               <Link
                 key={href}
                 href={href}
+                prefetch
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition",

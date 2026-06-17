@@ -11,22 +11,48 @@ import {
   stages,
 } from "./schema";
 import { asc, eq, sql, desc } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
+
+/**
+ * Tags do Data Cache. As leituras abaixo ficam em cache (sem ida ao banco a
+ * cada navegação) e só são invalidadas quando uma server action chama
+ * `revalidateTag(...)` com a tag correspondente. Ver `src/app/actions/*`.
+ */
+export const CACHE_TAGS = {
+  meta: "meta",
+  activities: "activities",
+  notes: "notes",
+  reminders: "reminders",
+  links: "links",
+  queries: "queries",
+} as const;
 
 export type ActivityView = Awaited<ReturnType<typeof getActivities>>[number];
 
-export async function getStages() {
-  return db.select().from(stages).orderBy(asc(stages.position));
-}
+export const getStages = unstable_cache(
+  async () => db.select().from(stages).orderBy(asc(stages.position)),
+  ["stages"],
+  { tags: [CACHE_TAGS.meta] },
+);
 
-export async function getJourneys() {
-  return db.select().from(journeys).orderBy(asc(journeys.name));
-}
+export const getJourneys = unstable_cache(
+  async () => db.select().from(journeys).orderBy(asc(journeys.name)),
+  ["journeys"],
+  { tags: [CACHE_TAGS.meta] },
+);
 
-export async function getAssignees() {
-  return db.select().from(assignees).orderBy(asc(assignees.name));
-}
+export const getAssignees = unstable_cache(
+  async () => db.select().from(assignees).orderBy(asc(assignees.name)),
+  ["assignees"],
+  { tags: [CACHE_TAGS.meta] },
+);
 
-export async function getActivities() {
+export const getActivities = unstable_cache(_getActivities, ["activities"], {
+  // Depende de atividades + metadados (stage/journey/assignee fazem join).
+  tags: [CACHE_TAGS.activities, CACHE_TAGS.meta],
+});
+
+async function _getActivities() {
   const [rows, statusRows] = await Promise.all([
     db
       .select({
@@ -138,28 +164,34 @@ export function ensureDefaults(): Promise<void> {
   return defaultsPromise;
 }
 
-export async function getNotes() {
-  return db.select().from(notes).orderBy(desc(notes.createdAt));
-}
+export const getNotes = unstable_cache(
+  async () => db.select().from(notes).orderBy(desc(notes.createdAt)),
+  ["notes"],
+  { tags: [CACHE_TAGS.notes] },
+);
 
-export async function getReminders() {
-  // Pendentes antes de concluídos; dentro de cada grupo, por data (nulls por último).
-  return db
-    .select()
-    .from(reminders)
-    .orderBy(asc(reminders.done), asc(reminders.dueDate), asc(reminders.createdAt));
-}
+export const getReminders = unstable_cache(
+  async () =>
+    // Pendentes antes de concluídos; dentro de cada grupo, por data (nulls por último).
+    db
+      .select()
+      .from(reminders)
+      .orderBy(asc(reminders.done), asc(reminders.dueDate), asc(reminders.createdAt)),
+  ["reminders"],
+  { tags: [CACHE_TAGS.reminders] },
+);
 
-export async function getLinks() {
-  return db.select().from(links).orderBy(desc(links.createdAt));
-}
+export const getLinks = unstable_cache(
+  async () => db.select().from(links).orderBy(desc(links.createdAt)),
+  ["links"],
+  { tags: [CACHE_TAGS.links] },
+);
 
-export async function getSavedQueries() {
-  return db
-    .select()
-    .from(savedQueries)
-    .orderBy(asc(savedQueries.position));
-}
+export const getSavedQueries = unstable_cache(
+  async () => db.select().from(savedQueries).orderBy(asc(savedQueries.position)),
+  ["saved-queries"],
+  { tags: [CACHE_TAGS.queries] },
+);
 
 // Novas queries entram no topo (menor posição). Reordenação usa fractional indexing.
 export async function topPositionForQuery(): Promise<number> {

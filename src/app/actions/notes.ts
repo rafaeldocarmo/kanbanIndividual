@@ -2,8 +2,9 @@
 
 import { db } from "@/db/client";
 import { links, notes, reminders } from "@/db/schema";
+import { CACHE_TAGS } from "@/db/queries";
 import { linkInput, noteInput, reminderInput } from "@/lib/validators";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -11,6 +12,17 @@ type ActionResult = { ok: true } | { ok: false; error: string };
 
 const PATH = "/notas";
 const uuidSchema = z.string().uuid();
+
+/**
+ * A página /notas carrega notas, lembretes e links juntos, então uma mutação
+ * invalida os três (mesmo conjunto de queries que a página já faz) + a rota.
+ */
+function revalidateNotas() {
+  revalidateTag(CACHE_TAGS.notes);
+  revalidateTag(CACHE_TAGS.reminders);
+  revalidateTag(CACHE_TAGS.links);
+  revalidatePath(PATH);
+}
 
 function invalid(error?: string): ActionResult {
   return { ok: false, error: error ?? "Inválido" };
@@ -25,7 +37,7 @@ export async function createNote(input: unknown): Promise<ActionResult> {
     title: parsed.data.title?.trim() || null,
     content: parsed.data.content,
   });
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
@@ -42,14 +54,14 @@ export async function updateNote(input: unknown): Promise<ActionResult> {
       updatedAt: new Date(),
     })
     .where(eq(notes.id, parsed.data.id));
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
 export async function deleteNote(id: string): Promise<ActionResult> {
   if (!uuidSchema.safeParse(id).success) return invalid("ID inválido");
   await db.delete(notes).where(eq(notes.id, id));
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
@@ -63,7 +75,7 @@ export async function createReminder(input: unknown): Promise<ActionResult> {
     dueDate: parsed.data.dueDate ?? null,
     done: parsed.data.done ?? false,
   });
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
@@ -81,7 +93,7 @@ export async function updateReminder(input: unknown): Promise<ActionResult> {
       updatedAt: new Date(),
     })
     .where(eq(reminders.id, parsed.data.id));
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
@@ -94,14 +106,14 @@ export async function toggleReminder(
     .update(reminders)
     .set({ done, updatedAt: new Date() })
     .where(eq(reminders.id, id));
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
 export async function deleteReminder(id: string): Promise<ActionResult> {
   if (!uuidSchema.safeParse(id).success) return invalid("ID inválido");
   await db.delete(reminders).where(eq(reminders.id, id));
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
@@ -115,7 +127,7 @@ export async function createLink(input: unknown): Promise<ActionResult> {
     url: parsed.data.url,
     category: parsed.data.category?.trim() || null,
   });
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
@@ -133,13 +145,13 @@ export async function updateLink(input: unknown): Promise<ActionResult> {
       updatedAt: new Date(),
     })
     .where(eq(links.id, parsed.data.id));
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }
 
 export async function deleteLink(id: string): Promise<ActionResult> {
   if (!uuidSchema.safeParse(id).success) return invalid("ID inválido");
   await db.delete(links).where(eq(links.id, id));
-  revalidatePath(PATH);
+  revalidateNotas();
   return { ok: true };
 }

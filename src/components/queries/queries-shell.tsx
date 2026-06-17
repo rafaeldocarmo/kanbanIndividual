@@ -156,7 +156,7 @@ export function QueriesShell({ data }: { data: SavedQuery[] }) {
   return (
     <QueriesContext.Provider value={ctxValue}>
       <div className="min-h-full bg-[var(--color-canvas)] px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-[1200px]">
+        <div className="animate-fade-in mx-auto w-full max-w-[1200px]">
           <header className="mb-6">
             <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
               <Database className="h-6 w-6 text-[var(--color-muted-foreground)]" />

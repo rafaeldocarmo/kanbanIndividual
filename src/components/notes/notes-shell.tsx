@@ -149,7 +149,7 @@ export function NotesShell({ data }: { data: NotesBootstrap }) {
   return (
     <NotesContext.Provider value={ctxValue}>
       <div className="min-h-full bg-[var(--color-canvas)] px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-[1200px]">
+        <div className="animate-fade-in mx-auto w-full max-w-[1200px]">
           <header className="mb-6">
             <h1 className="text-2xl font-semibold tracking-tight">
               Notas &amp; Lembretes

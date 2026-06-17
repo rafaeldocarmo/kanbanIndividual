@@ -2,9 +2,9 @@
 
 import { db } from "@/db/client";
 import { savedQueries } from "@/db/schema";
-import { topPositionForQuery } from "@/db/queries";
+import { CACHE_TAGS, topPositionForQuery } from "@/db/queries";
 import { savedQueryInput } from "@/lib/validators";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -12,6 +12,11 @@ type ActionResult = { ok: true } | { ok: false; error: string };
 
 const PATH = "/queries";
 const uuidSchema = z.string().uuid();
+
+function revalidateQueries() {
+  revalidateTag(CACHE_TAGS.queries);
+  revalidatePath(PATH);
+}
 
 function invalid(error?: string): ActionResult {
   return { ok: false, error: error ?? "Inválido" };
@@ -26,7 +31,7 @@ export async function createQuery(input: unknown): Promise<ActionResult> {
     query: parsed.data.query,
     position: position.toString(),
   });
-  revalidatePath(PATH);
+  revalidateQueries();
   return { ok: true };
 }
 
@@ -43,14 +48,14 @@ export async function updateQuery(input: unknown): Promise<ActionResult> {
       updatedAt: new Date(),
     })
     .where(eq(savedQueries.id, parsed.data.id));
-  revalidatePath(PATH);
+  revalidateQueries();
   return { ok: true };
 }
 
 export async function deleteQuery(id: string): Promise<ActionResult> {
   if (!uuidSchema.safeParse(id).success) return invalid("ID inválido");
   await db.delete(savedQueries).where(eq(savedQueries.id, id));
-  revalidatePath(PATH);
+  revalidateQueries();
   return { ok: true };
 }
 
@@ -101,6 +106,6 @@ export async function moveQuery(input: unknown): Promise<ActionResult> {
     .set({ position: newPos.toString(), updatedAt: new Date() })
     .where(eq(savedQueries.id, id));
 
-  revalidatePath(PATH);
+  revalidateQueries();
   return { ok: true };
 }

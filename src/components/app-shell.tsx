@@ -225,7 +225,7 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
   return (
     <ActivitiesContext.Provider value={ctxValue}>
       <div className="flex h-full flex-col bg-[var(--color-canvas)] pb-4">
-        <div className="mx-auto flex w-full max-w-[1200px] min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl bg-[var(--color-background)] shadow-[0_0_0_1px_var(--color-border)]">
+        <div className="animate-fade-in mx-auto flex w-full max-w-[1200px] min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl bg-[var(--color-background)] shadow-[0_0_0_1px_var(--color-border)]">
           <Toolbar
             search={search}
             onSearchChange={setSearch}

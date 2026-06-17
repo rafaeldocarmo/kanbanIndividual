@@ -2,13 +2,20 @@
 
 import { db } from "@/db/client";
 import { assignees, journeys, stages } from "@/db/schema";
+import { CACHE_TAGS } from "@/db/queries";
 import {
   assigneeInput,
   journeyInput,
   stageInput,
 } from "@/lib/validators";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { sql } from "drizzle-orm";
+
+/** Metadados são usados pelo Kanban (join); invalida cache de meta + rota. */
+function revalidateMeta() {
+  revalidateTag(CACHE_TAGS.meta);
+  revalidatePath("/");
+}
 
 type Result<T = void> =
   | { ok: true; data?: T }
@@ -25,7 +32,7 @@ export async function createJourney(input: unknown): Promise<Result<string>> {
         ...(parsed.data.color ? { color: parsed.data.color } : {}),
       })
       .returning({ id: journeys.id });
-    revalidatePath("/");
+    revalidateMeta();
     return { ok: true, data: row.id };
   } catch {
     return { ok: false, error: "Jornada já existe" };
@@ -43,7 +50,7 @@ export async function createAssignee(input: unknown): Promise<Result<string>> {
       ...(parsed.data.color ? { color: parsed.data.color } : {}),
     })
     .returning({ id: assignees.id });
-  revalidatePath("/");
+  revalidateMeta();
   return { ok: true, data: row.id };
 }
 
@@ -61,6 +68,6 @@ export async function createStage(input: unknown): Promise<Result<string>> {
       ...(parsed.data.color ? { color: parsed.data.color } : {}),
     })
     .returning({ id: stages.id });
-  revalidatePath("/");
+  revalidateMeta();
   return { ok: true, data: row.id };
 }
