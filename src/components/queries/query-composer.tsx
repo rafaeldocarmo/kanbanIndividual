@@ -33,6 +33,8 @@ export function QueryComposer() {
           id: `temp-${crypto.randomUUID()}`,
           title: t,
           query: q,
+          // Posição negativa garante que a nova query apareça no topo (ordem asc).
+          position: (-Date.now()).toString(),
           createdAt: now,
           updatedAt: now,
         },

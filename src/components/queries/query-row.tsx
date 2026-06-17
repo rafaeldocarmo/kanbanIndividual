@@ -2,17 +2,35 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, GripVertical } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { SavedQuery } from "@/db/schema";
 
 type Props = {
   item: SavedQuery;
   onOpen: (item: SavedQuery) => void;
+  draggable?: boolean;
 };
 
-export function QueryRow({ item, onOpen }: Props) {
+export function QueryRow({ item, onOpen, draggable = true }: Props) {
   const [copied, setCopied] = React.useState(false);
   const copiedTimer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id, disabled: !draggable });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : undefined,
+  };
 
   React.useEffect(() => () => clearTimeout(copiedTimer.current), []);
 
@@ -28,7 +46,22 @@ export function QueryRow({ item, onOpen }: Props) {
   };
 
   return (
-    <div className="group flex items-center gap-2 rounded-lg px-2 py-2 transition hover:bg-[var(--color-muted)]">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center gap-2 rounded-lg px-2 py-2 transition hover:bg-[var(--color-muted)]"
+    >
+      {draggable && (
+        <button
+          {...attributes}
+          {...listeners}
+          aria-label="Arrastar"
+          className="cursor-grab touch-none rounded p-1 opacity-0 transition group-hover:opacity-60 hover:opacity-100 active:cursor-grabbing"
+        >
+          <GripVertical className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => onOpen(item)}

@@ -190,6 +190,7 @@ export const savedQueries = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     title: text("title").notNull(),
     query: text("query").notNull(),
+    position: numeric("position", { precision: 38, scale: 18 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -198,7 +199,7 @@ export const savedQueries = pgTable(
       .notNull(),
   },
   (t) => ({
-    createdIdx: index("saved_queries_created_idx").on(t.createdAt),
+    positionIdx: index("saved_queries_position_idx").on(t.position),
   }),
 );
 

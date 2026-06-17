@@ -1,11 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { Search, Sun, Moon, StickyNote, Database } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { GroupBy, ViewMode } from "@/lib/types";
 
@@ -50,7 +47,6 @@ export function Toolbar({
   view,
   onViewChange,
 }: Props) {
-  const { theme, setTheme } = useTheme();
   const searchRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -117,31 +113,6 @@ export function Toolbar({
             Quadro
           </SegButton>
         </div>
-
-        <Button variant="ghost" size="icon" asChild aria-label="Notas & Lembretes">
-          <Link href="/notas" title="Notas & Lembretes">
-            <StickyNote className="h-4 w-4" />
-          </Link>
-        </Button>
-
-        <Button variant="ghost" size="icon" asChild aria-label="Queries">
-          <Link href="/queries" title="Queries">
-            <Database className="h-4 w-4" />
-          </Link>
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Alternar tema"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-        </Button>
       </div>
     </div>
   );

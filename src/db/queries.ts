@@ -158,7 +158,16 @@ export async function getSavedQueries() {
   return db
     .select()
     .from(savedQueries)
-    .orderBy(desc(savedQueries.createdAt));
+    .orderBy(asc(savedQueries.position));
+}
+
+// Novas queries entram no topo (menor posição). Reordenação usa fractional indexing.
+export async function topPositionForQuery(): Promise<number> {
+  const result = await db
+    .select({ min: sql<string | null>`min(${savedQueries.position})` })
+    .from(savedQueries);
+  const min = result[0]?.min ? Number(result[0].min) : null;
+  return min === null ? 1000 : min - 1000;
 }
 
 export async function nextPositionForStage(stageId: string): Promise<number> {

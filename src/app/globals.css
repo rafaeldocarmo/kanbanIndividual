@@ -59,6 +59,24 @@
     outline-offset: 2px;
     border-radius: 4px;
   }
+  /* Cursor de ponteiro em tudo que é clicável */
+  button,
+  a[href],
+  label[for],
+  summary,
+  select,
+  [role="button"],
+  [role="tab"],
+  [role="checkbox"],
+  [role="menuitem"],
+  [role="option"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  [disabled] {
+    cursor: default;
+  }
 }
 
 /* Custom scrollbar */

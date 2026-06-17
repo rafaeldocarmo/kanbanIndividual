@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { toast } from "sonner";
-import { StickyNote, Bell, Link2, ArrowLeft } from "lucide-react";
+import { StickyNote, Bell, Link2 } from "lucide-react";
 import type { LinkItem, Note, Reminder } from "@/db/schema";
 import { NoteComposer } from "@/components/notes/note-composer";
 import { NoteCard } from "@/components/notes/note-card";
@@ -149,16 +148,9 @@ export function NotesShell({ data }: { data: NotesBootstrap }) {
 
   return (
     <NotesContext.Provider value={ctxValue}>
-      <div className="min-h-svh bg-[var(--color-canvas)] px-4 py-8 sm:px-6">
+      <div className="min-h-full bg-[var(--color-canvas)] px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-[1200px]">
           <header className="mb-6">
-            <Link
-              href="/"
-              className="mb-3 inline-flex items-center gap-1.5 text-sm text-[var(--color-muted-foreground)] transition hover:text-[var(--color-foreground)]"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Kanban
-            </Link>
             <h1 className="text-2xl font-semibold tracking-tight">
               Notas &amp; Lembretes
             </h1>

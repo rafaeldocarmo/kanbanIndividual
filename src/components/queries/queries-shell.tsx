@@ -1,23 +1,36 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { toast } from "sonner";
-import { Database, ArrowLeft, Search } from "lucide-react";
+import { Database, Search } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import type { SavedQuery } from "@/db/schema";
 import { Input } from "@/components/ui/input";
 import { QueryComposer } from "@/components/queries/query-composer";
 import { QueryRow } from "@/components/queries/query-row";
 import { QueryDialog } from "@/components/queries/query-dialog";
+import { moveQuery } from "@/app/actions/queries";
 
 export type Mutation =
   | { op: "upsert"; query: SavedQuery }
   | { op: "delete"; id: string };
 
-const time = (d: Date) => new Date(d).getTime();
-
 function sortQueries(rows: SavedQuery[]) {
-  return [...rows].sort((a, b) => time(b.createdAt) - time(a.createdAt));
+  return [...rows].sort((a, b) => Number(a.position) - Number(b.position));
 }
 
 function reducer(state: SavedQuery[], action: Mutation): SavedQuery[] {
@@ -30,6 +43,18 @@ function reducer(state: SavedQuery[], action: Mutation): SavedQuery[] {
       ? [action.query, ...state]
       : state.map((q) => (q.id === action.query.id ? action.query : q));
   return sortQueries(next);
+}
+
+function computePositionBetween(
+  before: SavedQuery | null,
+  after: SavedQuery | null,
+): number {
+  const beforePos = before ? Number(before.position) : null;
+  const afterPos = after ? Number(after.position) : null;
+  if (beforePos !== null && afterPos !== null) return (beforePos + afterPos) / 2;
+  if (beforePos !== null) return beforePos + 1000;
+  if (afterPos !== null) return afterPos - 1000;
+  return 1000;
 }
 
 type QueriesCtx = {
@@ -82,6 +107,8 @@ export function QueriesShell({ data }: { data: SavedQuery[] }) {
     ? optimistic.find((q) => q.id === editingId) ?? null
     : null;
 
+  const searching = search.trim().length > 0;
+
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return optimistic;
@@ -92,18 +119,45 @@ export function QueriesShell({ data }: { data: SavedQuery[] }) {
     );
   }, [optimistic, search]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = optimistic.findIndex((q) => q.id === active.id);
+    const newIndex = optimistic.findIndex((q) => q.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const moved = optimistic[oldIndex];
+    const reordered = arrayMove(optimistic, oldIndex, newIndex);
+    const finalIdx = reordered.findIndex((q) => q.id === active.id);
+    const before = reordered[finalIdx - 1] ?? null;
+    const after = reordered[finalIdx + 1] ?? null;
+    const newPos = computePositionBetween(before, after);
+
+    mutate(
+      {
+        op: "upsert",
+        query: { ...moved, position: newPos.toString() },
+      },
+      () =>
+        moveQuery({
+          id: moved.id,
+          beforeId: before?.id ?? null,
+          afterId: after?.id ?? null,
+        }),
+    );
+  };
+
   return (
     <QueriesContext.Provider value={ctxValue}>
-      <div className="min-h-svh bg-[var(--color-canvas)] px-4 py-8 sm:px-6">
+      <div className="min-h-full bg-[var(--color-canvas)] px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-[1200px]">
           <header className="mb-6">
-            <Link
-              href="/"
-              className="mb-3 inline-flex items-center gap-1.5 text-sm text-[var(--color-muted-foreground)] transition hover:text-[var(--color-foreground)]"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Kanban
-            </Link>
             <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
               <Database className="h-6 w-6 text-[var(--color-muted-foreground)]" />
               Queries
@@ -140,9 +194,25 @@ export function QueriesShell({ data }: { data: SavedQuery[] }) {
               </p>
             ) : (
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-sm">
-                {filtered.map((q) => (
-                  <QueryRow key={q.id} item={q} onOpen={openEdit} />
-                ))}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={filtered.map((q) => q.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {filtered.map((q) => (
+                      <QueryRow
+                        key={q.id}
+                        item={q}
+                        onOpen={openEdit}
+                        draggable={!searching}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </div>
             )}
           </div>
