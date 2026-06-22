@@ -142,7 +142,7 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
   };
 
   return (
-    <div className="border-b border-[var(--color-border)] bg-[var(--color-canvas)] px-4 py-3">
+    <div className="px-4 py-3">
       <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm">
         {/* Primary row: chevron toggle + name input */}
         <div className="flex items-center gap-2 p-3">

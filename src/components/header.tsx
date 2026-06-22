@@ -29,12 +29,12 @@ export function Header() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="shrink-0 border-b border-[var(--color-border)] bg-[var(--color-background)]">
-      <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center gap-3 px-4">
+    <header className="shrink-0">
+      <div className="relative mx-auto flex h-14 w-full max-w-[1200px] items-center justify-center gap-3 px-4">
         <Link
           href="/"
           prefetch
-          className="mr-2 flex shrink-0 items-center gap-2 font-semibold tracking-tight"
+          className="flex shrink-0 items-center gap-2 font-semibold tracking-tight"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--color-primary)] text-[var(--color-primary-foreground)]">
             <LayoutGrid className="h-4 w-4" />
@@ -70,7 +70,7 @@ export function Header() {
           size="icon"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           aria-label="Alternar tema"
-          className="ml-auto"
+          className="absolute right-4 top-1/2 -translate-y-1/2"
         >
           {theme === "dark" ? (
             <Sun className="h-4 w-4" />

@@ -17,7 +17,7 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body>
         <Providers>
-          <div className="flex h-svh flex-col overflow-hidden">
+          <div className="bg-grid flex h-svh flex-col overflow-hidden">
             <Header />
             <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
           </div>

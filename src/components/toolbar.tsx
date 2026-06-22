@@ -65,7 +65,7 @@ export function Toolbar({
   }, []);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3">
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3">
       <div className="relative flex-1 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
         <Input

@@ -224,8 +224,8 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
 
   return (
     <ActivitiesContext.Provider value={ctxValue}>
-      <div className="flex h-full flex-col bg-[var(--color-canvas)] pb-4">
-        <div className="animate-fade-in mx-auto flex w-full max-w-[1200px] min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl bg-[var(--color-background)] shadow-[0_0_0_1px_var(--color-border)]">
+      <div className="flex h-full flex-col pb-4">
+        <div className="animate-fade-in mx-auto flex w-full max-w-[1200px] min-h-0 flex-1 flex-col overflow-hidden">
           <Toolbar
             search={search}
             onSearchChange={setSearch}
@@ -239,7 +239,7 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
             journeys={data.journeys}
             assignees={data.assignees}
           />
-          <div className="flex-1 min-h-0 overflow-hidden bg-[var(--color-canvas)] px-4 py-3">
+          <div className="flex-1 min-h-0 overflow-hidden px-4 py-3">
             <div className="scrollbar-hide h-full overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm">
             {view === "board" ? (
               <BoardView

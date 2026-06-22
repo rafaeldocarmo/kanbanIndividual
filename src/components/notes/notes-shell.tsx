@@ -148,7 +148,7 @@ export function NotesShell({ data }: { data: NotesBootstrap }) {
 
   return (
     <NotesContext.Provider value={ctxValue}>
-      <div className="min-h-full bg-[var(--color-canvas)] px-4 py-8 sm:px-6">
+      <div className="min-h-full px-4 py-8 sm:px-6">
         <div className="animate-fade-in mx-auto w-full max-w-[1200px]">
           <header className="mb-6">
             <h1 className="text-2xl font-semibold tracking-tight">
@@ -170,9 +170,11 @@ export function NotesShell({ data }: { data: NotesBootstrap }) {
               {optimistic.notes.length === 0 ? (
                 <EmptyHint>Nenhuma anotação ainda.</EmptyHint>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="gap-3 sm:columns-2">
                   {optimistic.notes.map((n) => (
-                    <NoteCard key={n.id} note={n} />
+                    <div key={n.id} className="mb-3 break-inside-avoid">
+                      <NoteCard note={n} />
+                    </div>
                   ))}
                 </div>
               )}
