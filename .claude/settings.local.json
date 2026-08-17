@@ -3,7 +3,16 @@
     "allow": [
       "Bash(npx tsc *)",
       "Bash(echo \"exit=$?\")",
-      "Bash(node scripts/add-stage.mjs)"
+      "Bash(node scripts/add-stage.mjs)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell(if \\(Test-Path .env.local\\) { \"env.local present\" } else { \"NO env.local\" }; \\(Get-Command pnpm -ErrorAction SilentlyContinue\\); \\(Get-Command node\\).Source)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node -e ' *)",
+      "Bash(rm -f .claude/launch.json)",
+      "Bash(git commit -m '@ *)",
+      "PowerShell(pnpm dev)"
     ]
   }
 }
