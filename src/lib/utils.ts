@@ -56,6 +56,66 @@ export function formatShortDate(value: Date | string | null | undefined) {
   return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`;
 }
 
+// --- Mural "Foco do dia": dias e sequência ---
+
+const WEEKDAY_INITIALS = ["D", "S", "T", "Q", "Q", "S", "S"];
+
+/** "YYYY-MM-DD" no fuso informado (padrão America/Sao_Paulo). */
+export function isoDay(date: Date = new Date(), tz = "America/Sao_Paulo") {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function parseIso(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function toIsoLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export type DayCell = { iso: string; label: string; isToday: boolean };
+
+/** Os últimos `n` dias terminando em `todayIso` (mais antigo → hoje). */
+export function buildDayStrip(todayIso: string, n = 7): DayCell[] {
+  const today = parseIso(todayIso);
+  const cells: DayCell[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const iso = toIsoLocal(d);
+    cells.push({
+      iso,
+      label: WEEKDAY_INITIALS[d.getDay()],
+      isToday: iso === todayIso,
+    });
+  }
+  return cells;
+}
+
+/**
+ * Sequência de dias consecutivos conferidos terminando hoje. Se hoje ainda não
+ * foi conferido, conta a partir de ontem (período de tolerância do dia atual).
+ */
+export function computeStreak(days: Set<string>, todayIso: string): number {
+  const cursor = parseIso(todayIso);
+  if (!days.has(todayIso)) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
+  while (days.has(toIsoLocal(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 /** Garante um protocolo para abrir o link em nova aba com segurança. */
 export function normalizeUrl(url: string) {
   const trimmed = url.trim();

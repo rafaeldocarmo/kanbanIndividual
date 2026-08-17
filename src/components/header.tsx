@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, StickyNote, Database, Sun, Moon } from "lucide-react";
+import { LayoutGrid, StickyNote, Database, Target, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const NAV: NavItem[] = [
   { href: "/", label: "Kanban", icon: LayoutGrid },
   { href: "/notas", label: "Notas", icon: StickyNote },
   { href: "/queries", label: "Queries", icon: Database },
+  { href: "/foco", label: "Foco", icon: Target },
 ];
 
 function isActive(pathname: string, href: string) {

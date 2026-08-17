@@ -10,6 +10,7 @@ import {
   date,
   boolean,
   primaryKey,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -203,6 +204,62 @@ export const savedQueries = pgTable(
   }),
 );
 
+// --- Mural "Foco do dia" (conferência diária com sequência) ---
+
+export const boardStatusEnum = pgEnum("board_status", [
+  "risco",
+  "atencao",
+  "em_dia",
+]);
+
+export const boardItems = pgTable(
+  "board_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    detail: text("detail"),
+    status: boardStatusEnum("status").notNull().default("em_dia"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    createdIdx: index("board_items_created_idx").on(t.createdAt),
+  }),
+);
+
+export const boardCheckins = pgTable(
+  "board_checkins",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => boardItems.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    itemDayUniq: unique("board_checkins_item_day_uniq").on(t.itemId, t.day),
+    itemIdx: index("board_checkins_item_idx").on(t.itemId),
+  }),
+);
+
+export const boardItemsRelations = relations(boardItems, ({ many }) => ({
+  checkins: many(boardCheckins),
+}));
+
+export const boardCheckinsRelations = relations(boardCheckins, ({ one }) => ({
+  item: one(boardItems, {
+    fields: [boardCheckins.itemId],
+    references: [boardItems.id],
+  }),
+}));
+
 export const stagesRelations = relations(stages, ({ many }) => ({
   activities: many(activities),
 }));
@@ -262,3 +319,6 @@ export type Note = typeof notes.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;
 export type LinkItem = typeof links.$inferSelect;
 export type SavedQuery = typeof savedQueries.$inferSelect;
+export type BoardItem = typeof boardItems.$inferSelect;
+export type BoardCheckin = typeof boardCheckins.$inferSelect;
+export type BoardStatus = (typeof boardStatusEnum.enumValues)[number];

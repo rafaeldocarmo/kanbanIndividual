@@ -74,3 +74,18 @@ export const savedQueryInput = z.object({
   query: z.string().trim().min(1, "Escreva a query").max(20000),
 });
 export type SavedQueryInput = z.infer<typeof savedQueryInput>;
+
+// --- Mural "Foco do dia" ---
+
+export const boardItemInput = z.object({
+  title: z.string().trim().min(1, "Título obrigatório").max(200),
+  detail: z.string().trim().max(300).optional().nullable(),
+  status: z.enum(["risco", "atencao", "em_dia"]).default("em_dia"),
+});
+export type BoardItemInput = z.infer<typeof boardItemInput>;
+
+export const checkinInput = z.object({
+  itemId: z.string().uuid(),
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  checked: z.boolean(),
+});
