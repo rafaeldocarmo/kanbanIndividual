@@ -152,8 +152,9 @@ export function ensureDefaults(): Promise<void> {
       inserts.push(
         db.insert(assignees).values([
           { name: "Eu", initials: "EU", color: "#0ea5e9" },
-          { name: "Falbi", initials: "FA", color: "#f97316" },
-          { name: "Chimi", initials: "CH", color: "#10b981" },
+          { name: "Kainã", initials: "KA", color: "#f43f5e" },
+          { name: "Vinicius", initials: "VI", color: "#10b981" },
+          { name: "Ricardo", initials: "RI", color: "#f97316" },
           { name: "N2", initials: "N2", color: "#a855f7" },
         ]),
       );
