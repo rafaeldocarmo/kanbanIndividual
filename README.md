@@ -1,6 +1,6 @@
 # Kanban Individual
 
-Aplicação web simples e rápida para gerenciamento de atividades operacionais individuais.
+Aplicação web simples e rápida para gerenciamento de atividades operacionais de uma equipe pequena (Rafael, Ricardo, Vinicius e Outros). Minimalista de propósito: sem sprints, pontos, horas, aprovações, papéis ou relatórios.
 
 ## Stack
 
@@ -25,6 +25,22 @@ pnpm dev          # http://localhost:3000
 > A `DATABASE_URL` já está em `.env.local`. Caso clone este repo, copie `.env.example` para `.env.local` e cole sua string do Neon.
 
 ## Funcionalidades
+
+### Modo equipe
+
+O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e "onde travou?".
+
+- **Você é** (topo): quem está usando o app. Sem login — é um cookie (`kb_me`) que define o filtro "Minhas" e assina as alterações
+- **Minhas / Da equipe** (barra de ferramentas): "Minhas" = atribuídas a você **ou** bloqueadas esperando por você
+- **Atribuir em 1 clique**: o avatar na linha/cartão abre o menu da equipe e reatribui na hora
+- **Bloqueado por**: alguém da equipe ou um externo em texto livre (ex.: "Fornecedor (externo)"). Selo "bloq. <nome>" na linha e borda vermelha no cartão; pelo menu "…" da linha, pelo selo ou pelo detalhe do item
+- **Faixa de carga**: itens em "Em Andamento" por pessoa, com mini-barra; âmbar acima de 3
+- **Sem atualização há X dias**: "há Xd" em âmbar a partir de 5 dias e vermelho a partir de 10 (fora de Backlog e Concluído). Reordenar na mesma coluna não conta como atualização
+- **Raias por pessoa** no Quadro: arrastar na horizontal muda a etapa, na vertical reatribui
+- **Comentários** no detalhe do item (autor, texto, data), assinados por quem está no "Você é"; cada um apaga só os próprios
+- **Disciplina visual**: cor só por exceção — âmbar para prioridade alta e itens parados, vermelho para bloqueio e parados há 10+ dias. Cada pessoa tem um matiz (mesma luminosidade/croma, OKLCH) usado **só** no avatar
+
+### Geral
 
 - Criar, editar, duplicar, excluir e visualizar atividades
 - Campos: nome, descrição, data, jornada, responsável, status, prioridade
@@ -51,7 +67,8 @@ assignees  (id, name, initials, color)
 activities (id, name, description, due_date,
             stage_id, journey_id, assignee_id,
             priority, position numeric,
-            created_at, updated_at)
+            blocked_by?, created_at, updated_at, updated_by?)
+activity_comments (id, activity_id, author_id?, content, created_at)
 
 notes        (id, title?, content, created_at, updated_at)
 reminders    (id, content, due_date?, done, created_at, updated_at)
@@ -102,7 +119,8 @@ src/
 3. **Busca client-side** com filtro instantâneo (sem hit no banco a cada tecla). Para escalas >1k itens, basta promover para uma query com índice GIN trigram em `activities.name` — schema já preparado.
 4. **Fractional indexing** evita rewrites em massa ao reordenar — fundamental para DnD performante.
 5. **Filtros/view na URL** via `nuqs` → estado compartilhável e persistente em refresh.
-6. **Sem auth** nesta versão (escopo individual); schema preparado para receber `user_id` futuramente.
+6. **Sem auth**: a identidade é um cookie escolhido em "Você é" (`src/lib/current-user.ts` valida contra a equipe). Serve para assinar, não para proteger.
+7. **Migrações no banco atual**: não use `drizzle-kit push` — ele tem a coluna legada `activities.description`, fora do schema, que o push apagaria. Aplique SQL aditivo e idempotente (`add column if not exists`…) por script avulso em `scripts/`. Num banco novo, `pnpm db:push` funciona normalmente.
 
 ## Acessibilidade
 

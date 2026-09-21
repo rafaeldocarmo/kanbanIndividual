@@ -16,7 +16,9 @@
   --color-accent-foreground: #0f172a;
   --color-card: #ffffff;
   --color-card-foreground: #0f172a;
-  --color-danger: #ef4444;
+  /* Cor só por exceção: âmbar = atenção, vermelho = atraso/bloqueio. */
+  --color-danger: #dc2626;
+  --color-warning: #b45309;
   --color-canvas: #eef2fb;
   --radius: 0.5rem;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
@@ -27,10 +29,21 @@
   :root {
     color-scheme: light;
     --color-grid: rgba(15, 23, 42, 0.04);
+    /* Avatares: mesma luminosidade/croma, só o matiz varia (ver avatarHue). */
+    --avatar-l: 0.9;
+    --avatar-c: 0.055;
+    --avatar-fg-l: 0.38;
+    --avatar-fg-c: 0.09;
   }
   .dark {
     color-scheme: dark;
     --color-grid: rgba(226, 232, 240, 0.05);
+    --avatar-l: 0.4;
+    --avatar-c: 0.06;
+    --avatar-fg-l: 0.93;
+    --avatar-fg-c: 0.035;
+    --color-danger: #f87171;
+    --color-warning: #fbbf24;
     --color-background: #0f172a;
     --color-foreground: #e2e8f0;
     --color-muted: #111827;

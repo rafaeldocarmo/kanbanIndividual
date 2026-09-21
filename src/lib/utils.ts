@@ -14,14 +14,28 @@ export function getInitials(name: string) {
     .join("");
 }
 
+// Só a prioridade alta pede ação (âmbar); média e baixa ficam em cinza.
 const PRIORITY_COLORS: Record<string, string> = {
-  high: "#ef4444",
-  medium: "#eab308",
-  low: "#3b82f6",
+  high: "var(--color-warning)",
+  medium: "color-mix(in srgb, var(--color-muted-foreground) 60%, transparent)",
+  low: "color-mix(in srgb, var(--color-muted-foreground) 25%, transparent)",
 };
 
 export function priorityColor(priority: string | null | undefined) {
   return PRIORITY_COLORS[priority ?? "medium"] ?? PRIORITY_COLORS.medium;
+}
+
+/** Fractional indexing: posição entre dois vizinhos (qualquer um pode faltar). */
+export function positionBetween(
+  before: { position: string } | null,
+  after: { position: string } | null,
+): number {
+  const beforePos = before ? Number(before.position) : null;
+  const afterPos = after ? Number(after.position) : null;
+  if (beforePos !== null && afterPos !== null) return (beforePos + afterPos) / 2;
+  if (beforePos !== null) return beforePos + 1000;
+  if (afterPos !== null) return afterPos - 1000;
+  return 1000;
 }
 
 const SHORT_MONTHS = [

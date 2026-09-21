@@ -5,7 +5,11 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Avatar, PriorityBubble } from "@/components/ui/badge";
+import { MessageSquare } from "lucide-react";
+import { PriorityBubble } from "@/components/ui/badge";
+import { AssigneePicker } from "@/components/team/assignee-picker";
+import { BlockedByControl } from "@/components/team/blocked-by";
+import { StaleBadge } from "@/components/team/stale-badge";
 import { priorityColor, cn } from "@/lib/utils";
 import type { ActivityView } from "@/lib/types";
 
@@ -42,14 +46,17 @@ function ActivityCardImpl({ activity, onClick, dragging }: Props) {
       }}
       className={cn(
         "group cursor-grab rounded-md border border-[var(--color-border)] bg-[var(--color-card)] p-3 text-sm shadow-sm transition hover:shadow-md active:cursor-grabbing",
+        activity.blockedBy && "border-l-[3px] border-l-[var(--color-danger)]",
         dragging && "dragging-overlay",
       )}
     >
       <div className="flex items-start gap-2">
-        <PriorityBubble
-          color={priorityColor(activity.priority)}
-          title={`Prioridade ${activity.priority}`}
-        />
+        <span className="mt-[5px] flex">
+          <PriorityBubble
+            color={priorityColor(activity.priority)}
+            title={`Prioridade ${activity.priority}`}
+          />
+        </span>
         <div className="flex-1 leading-snug">
           {activity.journeyName && (
             <>
@@ -68,21 +75,26 @@ function ActivityCardImpl({ activity, onClick, dragging }: Props) {
           )}
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between gap-2 text-xs text-[var(--color-muted-foreground)]">
-        <div>
+      <div className="mt-3 flex min-w-0 items-center gap-2 text-xs text-[var(--color-muted-foreground)]">
+        <AssigneePicker activity={activity} size={22} />
+        <BlockedByControl activity={activity} />
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <StaleBadge activity={activity} />
+          {activity.comments.length > 0 && (
+            <span
+              title={`${activity.comments.length} comentário(s)`}
+              className="flex items-center gap-0.5 tabular-nums"
+            >
+              <MessageSquare className="h-3 w-3" />
+              {activity.comments.length}
+            </span>
+          )}
           {due && (
             <span className="tabular-nums">
               {format(due, "dd MMM", { locale: ptBR })}
             </span>
           )}
         </div>
-        {activity.assigneeInitials && (
-          <Avatar
-            initials={activity.assigneeInitials}
-            color={activity.assigneeColor ?? undefined}
-            title={activity.assigneeName ?? undefined}
-          />
-        )}
       </div>
     </div>
   );

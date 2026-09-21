@@ -77,12 +77,18 @@ export const activities = pgTable(
     }),
     priority: priorityEnum("priority").notNull().default("medium"),
     position: numeric("position", { precision: 38, scale: 18 }).notNull(),
+    // Quem/o que está travando o item: nome de alguém da equipe ou um externo
+    // em texto livre (ex.: "Fornecedor (externo)"). Null = não bloqueado.
+    blockedBy: text("blocked_by"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    updatedById: uuid("updated_by").references(() => assignees.id, {
+      onDelete: "set null",
+    }),
   },
   (t) => ({
     stageIdx: index("activities_stage_idx").on(t.stageId, t.position),
@@ -121,6 +127,29 @@ export const activityStatusUpdates = pgTable(
   },
   (t) => ({
     activityIdx: index("status_updates_activity_idx").on(
+      t.activityId,
+      t.createdAt,
+    ),
+  }),
+);
+
+export const activityComments = pgTable(
+  "activity_comments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    activityId: uuid("activity_id")
+      .notNull()
+      .references(() => activities.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id").references(() => assignees.id, {
+      onDelete: "set null",
+    }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    activityIdx: index("activity_comments_activity_idx").on(
       t.activityId,
       t.createdAt,
     ),
@@ -296,7 +325,22 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   }),
   tags: many(activityTags),
   statusUpdates: many(activityStatusUpdates),
+  comments: many(activityComments),
 }));
+
+export const activityCommentsRelations = relations(
+  activityComments,
+  ({ one }) => ({
+    activity: one(activities, {
+      fields: [activityComments.activityId],
+      references: [activities.id],
+    }),
+    author: one(assignees, {
+      fields: [activityComments.authorId],
+      references: [assignees.id],
+    }),
+  }),
+);
 
 export const activityStatusUpdatesRelations = relations(
   activityStatusUpdates,
@@ -314,6 +358,7 @@ export type Assignee = typeof assignees.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
 export type ActivityStatusUpdate = typeof activityStatusUpdates.$inferSelect;
+export type ActivityComment = typeof activityComments.$inferSelect;
 export type Priority = (typeof priorityEnum.enumValues)[number];
 export type Note = typeof notes.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;

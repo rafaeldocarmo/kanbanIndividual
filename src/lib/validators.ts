@@ -16,6 +16,27 @@ export const statusUpdateInput = z.object({
   content: z.string().trim().min(1, "Status vazio").max(500),
 });
 
+export const assignInput = z.object({
+  id: z.string().uuid(),
+  assigneeId: z.string().uuid().nullable(),
+});
+
+export const blockedByInput = z.object({
+  id: z.string().uuid(),
+  // Vazio = desbloquear.
+  blockedBy: z
+    .string()
+    .trim()
+    .max(80)
+    .nullable()
+    .transform((v) => v || null),
+});
+
+export const commentInput = z.object({
+  activityId: z.string().uuid(),
+  content: z.string().trim().min(1, "Comentário vazio").max(2000),
+});
+
 export const journeyInput = z.object({
   name: z.string().trim().min(1).max(80),
   color: z

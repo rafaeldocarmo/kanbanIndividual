@@ -8,6 +8,13 @@ export default function Loading() {
   return (
     <div className="flex h-full flex-col bg-[var(--color-canvas)] pb-4">
       <div className="animate-fade-in mx-auto flex w-full max-w-[1200px] min-h-0 flex-1 flex-col overflow-hidden rounded-b-xl bg-[var(--color-background)] shadow-[0_0_0_1px_var(--color-border)]">
+        {/* Faixa de carga da equipe */}
+        <div className="flex items-center gap-5 px-4 pt-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-4 w-24 rounded" />
+          ))}
+        </div>
+
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3">
           <Skeleton className="h-9 w-full max-w-md rounded-md" />

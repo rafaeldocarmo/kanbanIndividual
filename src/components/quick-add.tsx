@@ -15,6 +15,7 @@ import type { Assignee, Journey, Stage } from "@/db/schema";
 import type { ActivityView } from "@/lib/types";
 import { createActivity } from "@/app/actions/activities";
 import { useActivitiesContext } from "@/components/app-shell";
+import { useTeam } from "@/components/team/team-provider";
 import { cn, priorityColor } from "@/lib/utils";
 
 type Props = {
@@ -27,11 +28,16 @@ const NONE = "__none__";
 
 export function QuickAdd({ stages, journeys, assignees }: Props) {
   const { mutate } = useActivitiesContext();
+  const { me } = useTeam();
   const [name, setName] = React.useState("");
   const [status, setStatus] = React.useState("");
   const [stageId, setStageId] = React.useState(stages[0]?.id ?? "");
   const [journeyId, setJourneyId] = React.useState<string | null>(null);
-  const [assigneeId, setAssigneeId] = React.useState<string | null>(null);
+  // Em equipe, quem cria normalmente é quem pega: padrão = você.
+  const [assigneeId, setAssigneeId] = React.useState<string | null>(
+    me?.id ?? null,
+  );
+  React.useEffect(() => setAssigneeId(me?.id ?? null), [me?.id]);
   const [priority, setPriority] = React.useState<"low" | "medium" | "high">(
     "medium",
   );
@@ -61,7 +67,7 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
     setName("");
     setStatus("");
     setJourneyId(null);
-    setAssigneeId(null);
+    setAssigneeId(me?.id ?? null);
     setPriority("medium");
     setStageId(stages[0]?.id ?? "");
   };
@@ -106,8 +112,10 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
       stageId,
       journeyId,
       assigneeId,
+      blockedBy: null,
       createdAt: now,
       updatedAt: now,
+      updatedById: me?.id ?? null,
       stageName: stage?.name ?? null,
       stageColor: stage?.color ?? null,
       journeyName: journey?.name ?? null,
@@ -117,6 +125,7 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
       assigneeColor: assignee?.color ?? null,
       statusUpdates: statusHistory,
       lastStatus: initialStatusTrim || null,
+      comments: [],
     };
 
     mutate({ type: "create", activity: optimistic }, () =>

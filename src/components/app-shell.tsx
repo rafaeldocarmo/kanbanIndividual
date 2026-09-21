@@ -7,6 +7,9 @@ import dynamic from "next/dynamic";
 import { ListView } from "@/components/list-view";
 import { BoardView } from "@/components/board-view";
 import { QuickAdd } from "@/components/quick-add";
+import { TeamLoad } from "@/components/team/team-load";
+import { useTeam } from "@/components/team/team-provider";
+import { isMine } from "@/lib/team";
 
 const ActivityDialog = dynamic(
   () =>
@@ -25,13 +28,18 @@ const ActivityStatusDialog = dynamic(
 import type {
   ActivityView,
   BootstrapData,
+  CommentEntry,
   GroupBy,
+  Lanes,
+  Scope,
   ViewMode,
 } from "@/lib/types";
 import { useQueryState, parseAsStringEnum } from "nuqs";
 
 const GROUPS: GroupBy[] = ["status", "journey", "assignee"];
 const VIEWS: ViewMode[] = ["list", "board"];
+const SCOPES: Scope[] = ["team", "mine"];
+const LANES: Lanes[] = ["none", "person"];
 
 export type Mutation =
   | { type: "create"; activity: ActivityView }
@@ -57,22 +65,39 @@ export type Mutation =
       activityId: string;
       status: { id: string; content: string; createdAt: Date };
     }
-  | { type: "removeStatus"; activityId: string; statusId: string };
+  | { type: "removeStatus"; activityId: string; statusId: string }
+  /** Troca campos simples (responsável, bloqueio…) sem mexer na posição. */
+  | { type: "patch"; id: string; patch: Partial<ActivityView> }
+  | { type: "addComment"; activityId: string; comment: CommentEntry }
+  | { type: "removeComment"; activityId: string; commentId: string };
 
-function reducer(state: ActivityView[], action: Mutation): ActivityView[] {
+/** Mutação + quem está usando o app, para carimbar "atualizado agora por". */
+type Stamped = Mutation & { by: string | null };
+
+function reducer(state: ActivityView[], action: Stamped): ActivityView[] {
+  const touch = (a: ActivityView): ActivityView => ({
+    ...a,
+    updatedAt: new Date(),
+    updatedById: action.by,
+  });
   switch (action.type) {
     case "create":
       return [action.activity, ...state];
     case "update":
       return state.map((a) =>
-        a.id === action.activity.id ? action.activity : a,
+        a.id === action.activity.id ? touch(action.activity) : a,
       );
     case "delete":
       return state.filter((a) => a.id !== action.id);
     case "move": {
       const next = state.map((a) => {
         if (a.id !== action.id) return a;
-        const out: ActivityView = { ...a };
+        // Reordenar na mesma coluna não conta como atualização (igual ao servidor).
+        const changed =
+          (action.stageId !== undefined && action.stageId !== a.stageId) ||
+          (action.journeyId !== undefined && action.journeyId !== a.journeyId) ||
+          (action.assigneeId !== undefined && action.assigneeId !== a.assigneeId);
+        const out: ActivityView = changed ? touch(a) : { ...a };
         if (action.stageId !== undefined) {
           out.stageId = action.stageId;
           out.stageName = action.stageName ?? null;
@@ -100,7 +125,7 @@ function reducer(state: ActivityView[], action: Mutation): ActivityView[] {
       return state.map((a) =>
         a.id === action.activityId
           ? {
-              ...a,
+              ...touch(a),
               statusUpdates: [action.status, ...a.statusUpdates],
               lastStatus: action.status.content,
             }
@@ -116,6 +141,25 @@ function reducer(state: ActivityView[], action: Mutation): ActivityView[] {
           lastStatus: next[0]?.content ?? null,
         };
       });
+    case "patch":
+      return state.map((a) =>
+        a.id === action.id ? { ...touch(a), ...action.patch } : a,
+      );
+    case "addComment":
+      return state.map((a) =>
+        a.id === action.activityId
+          ? { ...touch(a), comments: [...a.comments, action.comment] }
+          : a,
+      );
+    case "removeComment":
+      return state.map((a) =>
+        a.id === action.activityId
+          ? {
+              ...a,
+              comments: a.comments.filter((c) => c.id !== action.commentId),
+            }
+          : a,
+      );
   }
 }
 
@@ -139,9 +183,18 @@ type Props = {
   data: BootstrapData;
   initialView?: ViewMode;
   initialGroup?: GroupBy;
+  initialScope?: Scope;
+  initialLanes?: Lanes;
 };
 
-export function AppShell({ data, initialView, initialGroup }: Props) {
+export function AppShell({
+  data,
+  initialView,
+  initialGroup,
+  initialScope,
+  initialLanes,
+}: Props) {
+  const { me } = useTeam();
   const [search, setSearch] = React.useState("");
   const [group, setGroup] = useQueryState(
     "group",
@@ -150,6 +203,14 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
   const [view, setView] = useQueryState(
     "view",
     parseAsStringEnum(VIEWS).withDefault(initialView ?? "list"),
+  );
+  const [scope, setScope] = useQueryState(
+    "scope",
+    parseAsStringEnum(SCOPES).withDefault(initialScope ?? "team"),
+  );
+  const [lanes, setLanes] = useQueryState(
+    "lanes",
+    parseAsStringEnum(LANES).withDefault(initialLanes ?? "none"),
   );
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -167,10 +228,11 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
     reducer,
   );
 
+  const meId = me?.id ?? null;
   const mutate = React.useCallback<ActivitiesCtx["mutate"]>(
     (action, server) => {
       React.startTransition(async () => {
-        applyOptimistic(action);
+        applyOptimistic({ ...action, by: meId });
         try {
           const r = await server();
           if (!r.ok) toast.error(r.error ?? "Falha ao salvar");
@@ -179,7 +241,7 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
         }
       });
     },
-    [applyOptimistic],
+    [applyOptimistic, meId],
   );
 
   const ctxValue = React.useMemo<ActivitiesCtx>(
@@ -209,28 +271,40 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
     ? optimisticActivities.find((a) => a.id === viewingId) ?? null
     : null;
 
+  // Sem identidade escolhida, "Minhas" não tem como filtrar: vale "Da equipe".
+  const mineOnly = scope === "mine" && !!me;
+
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return optimisticActivities;
+    if (!q && !mineOnly) return optimisticActivities;
     return optimisticActivities.filter((a) => {
+      if (mineOnly && me && !isMine(a, me)) return false;
+      if (!q) return true;
       return (
         a.name.toLowerCase().includes(q) ||
         a.lastStatus?.toLowerCase().includes(q) ||
         a.journeyName?.toLowerCase().includes(q) ||
-        a.assigneeName?.toLowerCase().includes(q)
+        a.assigneeName?.toLowerCase().includes(q) ||
+        a.blockedBy?.toLowerCase().includes(q)
       );
     });
-  }, [optimisticActivities, search]);
+  }, [optimisticActivities, search, mineOnly, me]);
 
   return (
     <ActivitiesContext.Provider value={ctxValue}>
       <div className="flex h-full flex-col pb-4">
         <div className="animate-fade-in mx-auto flex w-full max-w-[1200px] min-h-0 flex-1 flex-col overflow-hidden">
+          <TeamLoad activities={optimisticActivities} stages={data.stages} />
           <Toolbar
             search={search}
             onSearchChange={setSearch}
+            scope={mineOnly ? "mine" : "team"}
+            onScopeChange={setScope}
+            canFilterMine={!!me}
             group={group}
             onGroupChange={setGroup}
+            lanes={lanes}
+            onLanesChange={setLanes}
             view={view}
             onViewChange={setView}
           />
@@ -245,6 +319,7 @@ export function AppShell({ data, initialView, initialGroup }: Props) {
               <BoardView
                 activities={filtered}
                 stages={data.stages}
+                lanes={lanes}
                 onView={openView}
               />
             ) : (

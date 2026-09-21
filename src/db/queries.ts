@@ -1,6 +1,7 @@
 import { db } from "./client";
 import {
   activities,
+  activityComments,
   activityStatusUpdates,
   assignees,
   journeys,
@@ -14,6 +15,7 @@ import {
 } from "./schema";
 import { asc, eq, sql, desc } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
+import type { CommentEntry } from "@/lib/types";
 
 /**
  * Tags do Data Cache. As leituras abaixo ficam em cache (sem ida ao banco a
@@ -45,8 +47,14 @@ export const getJourneys = unstable_cache(
   { tags: [CACHE_TAGS.meta] },
 );
 
+// Ordem da equipe: alfabética, com o balde "Outros" sempre por último. A
+// posição aqui também define a cor do avatar (ver `avatarHue`).
 export const getAssignees = unstable_cache(
-  async () => db.select().from(assignees).orderBy(asc(assignees.name)),
+  async () =>
+    db
+      .select()
+      .from(assignees)
+      .orderBy(sql`${assignees.name} = 'Outros'`, asc(assignees.name)),
   ["assignees"],
   { tags: [CACHE_TAGS.meta] },
 );
@@ -57,7 +65,7 @@ export const getActivities = unstable_cache(_getActivities, ["activities"], {
 });
 
 async function _getActivities() {
-  const [rows, statusRows] = await Promise.all([
+  const [rows, statusRows, commentRows] = await Promise.all([
     db
       .select({
         id: activities.id,
@@ -68,8 +76,10 @@ async function _getActivities() {
         stageId: activities.stageId,
         journeyId: activities.journeyId,
         assigneeId: activities.assigneeId,
+        blockedBy: activities.blockedBy,
         createdAt: activities.createdAt,
         updatedAt: activities.updatedAt,
+        updatedById: activities.updatedById,
         stageName: stages.name,
         stageColor: stages.color,
         journeyName: journeys.name,
@@ -87,6 +97,10 @@ async function _getActivities() {
       .select()
       .from(activityStatusUpdates)
       .orderBy(desc(activityStatusUpdates.createdAt)),
+    db
+      .select()
+      .from(activityComments)
+      .orderBy(asc(activityComments.createdAt)),
   ]);
 
   const statusByActivity = new Map<
@@ -100,6 +114,19 @@ async function _getActivities() {
     else statusByActivity.set(s.activityId, [entry]);
   }
 
+  const commentsByActivity = new Map<string, CommentEntry[]>();
+  for (const c of commentRows) {
+    const arr = commentsByActivity.get(c.activityId);
+    const entry = {
+      id: c.id,
+      authorId: c.authorId,
+      content: c.content,
+      createdAt: c.createdAt,
+    };
+    if (arr) arr.push(entry);
+    else commentsByActivity.set(c.activityId, [entry]);
+  }
+
   return rows.map((r) => {
     const history = statusByActivity.get(r.id) ?? [];
     return {
@@ -107,6 +134,7 @@ async function _getActivities() {
       position: String(r.position),
       statusUpdates: history,
       lastStatus: history[0]?.content ?? null,
+      comments: commentsByActivity.get(r.id) ?? [],
     };
   });
 }
@@ -151,11 +179,10 @@ export function ensureDefaults(): Promise<void> {
     if (hasAssignees.length === 0) {
       inserts.push(
         db.insert(assignees).values([
-          { name: "Eu", initials: "EU", color: "#0ea5e9" },
-          { name: "Kainã", initials: "KA", color: "#f43f5e" },
-          { name: "Vinicius", initials: "VI", color: "#10b981" },
-          { name: "Ricardo", initials: "RI", color: "#f97316" },
-          { name: "N2", initials: "N2", color: "#a855f7" },
+          { name: "Rafael", initials: "RA" },
+          { name: "Ricardo", initials: "RI" },
+          { name: "Vinicius", initials: "VI" },
+          { name: "Outros", initials: "OU" },
         ]),
       );
     }

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LayoutGrid, StickyNote, Database, Target, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { IdentityPicker } from "@/components/team/identity-picker";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -66,19 +67,19 @@ export function Header() {
           })}
         </nav>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Alternar tema"
-          className="absolute right-4 top-1/2 -translate-y-1/2"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-        </Button>
+        <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1">
+          <IdentityPicker />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label="Alternar tema"
+          >
+            {/* Ícone por CSS: o tema só é conhecido no cliente (evita erro de hidratação). */}
+            <Sun className="hidden h-4 w-4 dark:block" />
+            <Moon className="h-4 w-4 dark:hidden" />
+          </Button>
+        </div>
       </div>
     </header>
   );

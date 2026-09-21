@@ -4,13 +4,18 @@ import * as React from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { GroupBy, ViewMode } from "@/lib/types";
+import type { GroupBy, Lanes, Scope, ViewMode } from "@/lib/types";
 
 type Props = {
   search: string;
   onSearchChange: (s: string) => void;
+  scope: Scope;
+  onScopeChange: (s: Scope) => void;
+  canFilterMine: boolean;
   group: GroupBy;
   onGroupChange: (g: GroupBy) => void;
+  lanes: Lanes;
+  onLanesChange: (l: Lanes) => void;
   view: ViewMode;
   onViewChange: (v: ViewMode) => void;
 };
@@ -18,20 +23,27 @@ type Props = {
 function SegButton({
   active,
   onClick,
+  disabled,
+  title,
   children,
 }: {
   active: boolean;
   onClick: () => void;
+  disabled?: boolean;
+  title?: string;
   children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-pressed={active}
       className={cn(
-        "rounded px-3 py-1 text-sm transition",
+        "rounded px-3 py-1 text-sm transition disabled:opacity-50",
         active
           ? "bg-[var(--color-card)] text-[var(--color-foreground)] shadow-sm"
-          : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]",
+          : "text-[var(--color-muted-foreground)] enabled:hover:text-[var(--color-foreground)]",
       )}
     >
       {children}
@@ -42,8 +54,13 @@ function SegButton({
 export function Toolbar({
   search,
   onSearchChange,
+  scope,
+  onScopeChange,
+  canFilterMine,
   group,
   onGroupChange,
+  lanes,
+  onLanesChange,
   view,
   onViewChange,
 }: Props) {
@@ -66,7 +83,7 @@ export function Toolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-      <div className="relative flex-1 max-w-md">
+      <div className="relative min-w-[14rem] flex-1 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
         <Input
           ref={searchRef}
@@ -77,30 +94,71 @@ export function Toolbar({
         />
       </div>
 
+      <div className="flex rounded-md bg-[var(--color-muted)] p-0.5">
+        <SegButton
+          active={scope === "mine"}
+          onClick={() => onScopeChange("mine")}
+          disabled={!canFilterMine}
+          title={
+            canFilterMine
+              ? "Atribuídas a você ou esperando por você"
+              : "Escolha quem você é no topo"
+          }
+        >
+          Minhas
+        </SegButton>
+        <SegButton
+          active={scope === "team"}
+          onClick={() => onScopeChange("team")}
+        >
+          Da equipe
+        </SegButton>
+      </div>
+
       <div className="ml-auto flex items-center gap-4">
-        <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
-          <span>Agrupar</span>
-          <div className="flex rounded-md bg-[var(--color-muted)] p-0.5">
-            <SegButton
-              active={group === "status"}
-              onClick={() => onGroupChange("status")}
-            >
-              Status
-            </SegButton>
-            <SegButton
-              active={group === "journey"}
-              onClick={() => onGroupChange("journey")}
-            >
-              Jornada
-            </SegButton>
-            <SegButton
-              active={group === "assignee"}
-              onClick={() => onGroupChange("assignee")}
-            >
-              Responsável
-            </SegButton>
+        {view === "board" ? (
+          <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
+            <span>Raias</span>
+            <div className="flex rounded-md bg-[var(--color-muted)] p-0.5">
+              <SegButton
+                active={lanes === "none"}
+                onClick={() => onLanesChange("none")}
+              >
+                Nenhuma
+              </SegButton>
+              <SegButton
+                active={lanes === "person"}
+                onClick={() => onLanesChange("person")}
+              >
+                Por pessoa
+              </SegButton>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
+            <span>Agrupar</span>
+            <div className="flex rounded-md bg-[var(--color-muted)] p-0.5">
+              <SegButton
+                active={group === "status"}
+                onClick={() => onGroupChange("status")}
+              >
+                Status
+              </SegButton>
+              <SegButton
+                active={group === "journey"}
+                onClick={() => onGroupChange("journey")}
+              >
+                Jornada
+              </SegButton>
+              <SegButton
+                active={group === "assignee"}
+                onClick={() => onGroupChange("assignee")}
+              >
+                Responsável
+              </SegButton>
+            </div>
+          </div>
+        )}
 
         <div className="flex rounded-md bg-[var(--color-muted)] p-0.5">
           <SegButton active={view === "list"} onClick={() => onViewChange("list")}>

@@ -8,12 +8,14 @@ import {
   Trash2,
   ArrowRight,
   GripVertical,
+  Ban,
+  MessageSquare,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge, Avatar, PriorityBubble } from "@/components/ui/badge";
+import { Badge, PriorityBubble } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +36,14 @@ import {
   moveActivity,
 } from "@/app/actions/activities";
 import { useActivitiesContext } from "@/components/app-shell";
+import { AssigneePicker } from "@/components/team/assignee-picker";
+import {
+  BlockedByControl,
+  BlockedByItems,
+} from "@/components/team/blocked-by";
+import { StaleBadge } from "@/components/team/stale-badge";
+import { useTeam } from "@/components/team/team-provider";
+import { DONE_STAGE } from "@/lib/team";
 
 type Props = {
   activity: ActivityView;
@@ -51,8 +61,10 @@ function ActivityRowImpl({
   showStage = true,
 }: Props) {
   const { mutate } = useActivitiesContext();
+  const { me } = useTeam();
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const due = activity.dueDate ? parseISO(activity.dueDate) : null;
-  const isDone = activity.stageName === "Concluído";
+  const isDone = activity.stageName === DONE_STAGE;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
       id: activity.id,
@@ -79,8 +91,11 @@ function ActivityRowImpl({
       name: `${activity.name} (cópia)`,
       statusUpdates: [],
       lastStatus: null,
+      blockedBy: null,
+      comments: [],
       createdAt: new Date(),
       updatedAt: new Date(),
+      updatedById: me?.id ?? null,
     };
     mutate({ type: "create", activity: optimistic }, () =>
       duplicateActivity(activity.id),
@@ -109,6 +124,7 @@ function ActivityRowImpl({
       >
         <GripVertical className="h-4 w-4 text-[var(--color-muted-foreground)]" />
       </button>
+      <AssigneePicker activity={activity} />
       <PriorityBubble
         color={priorityColor(activity.priority)}
         title={`Prioridade ${activity.priority}`}
@@ -136,13 +152,17 @@ function ActivityRowImpl({
           </>
         )}
       </button>
-      <div className="ml-auto flex items-center gap-3">
-        {activity.assigneeInitials && (
-          <Avatar
-            initials={activity.assigneeInitials}
-            color={activity.assigneeColor ?? undefined}
-            title={activity.assigneeName ?? undefined}
-          />
+      <div className="ml-auto flex min-w-0 items-center gap-3">
+        <BlockedByControl activity={activity} />
+        <StaleBadge activity={activity} />
+        {activity.comments.length > 0 && (
+          <span
+            title={`${activity.comments.length} comentário(s)`}
+            className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-[var(--color-muted-foreground)]"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            {activity.comments.length}
+          </span>
         )}
         {due && (
           <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">
@@ -152,7 +172,7 @@ function ActivityRowImpl({
         {showStage && activity.stageName && (
           <Badge>{activity.stageName}</Badge>
         )}
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <button
               aria-label="Ações"
@@ -186,6 +206,18 @@ function ActivityRowImpl({
                     {s.name}
                   </DropdownMenuItem>
                 ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Ban className="mr-2 h-3.5 w-3.5" />
+                Bloqueado por
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-56">
+                <BlockedByItems
+                  activity={activity}
+                  onDone={() => setMenuOpen(false)}
+                />
               </DropdownMenuSubContent>
             </DropdownMenuSub>
             <DropdownMenuSeparator />

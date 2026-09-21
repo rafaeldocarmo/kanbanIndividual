@@ -34,6 +34,7 @@ import {
   updateActivity,
 } from "@/app/actions/activities";
 import { useActivitiesContext } from "@/components/app-shell";
+import { useTeam } from "@/components/team/team-provider";
 
 type Props = {
   open: boolean;
@@ -61,6 +62,7 @@ export function ActivityDialog({
 }: Props) {
   const isEdit = !!initial;
   const { mutate } = useActivitiesContext();
+  const { me } = useTeam();
 
   const {
     register,
@@ -150,8 +152,10 @@ export function ActivityDialog({
         stageId: values.stageId,
         journeyId: values.journeyId ?? null,
         assigneeId: values.assigneeId ?? null,
+        blockedBy: null,
         createdAt: now,
         updatedAt: now,
+        updatedById: me?.id ?? null,
         stageName: stage?.name ?? null,
         stageColor: stage?.color ?? null,
         journeyName: journey?.name ?? null,
@@ -161,6 +165,7 @@ export function ActivityDialog({
         assigneeColor: assignee?.color ?? null,
         statusUpdates: statusHistory,
         lastStatus: payload.initialStatus || null,
+        comments: [],
       };
       mutate({ type: "create", activity: optimistic }, () =>
         createActivity(payload),

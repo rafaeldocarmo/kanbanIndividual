@@ -24,25 +24,43 @@ export function Badge({
   );
 }
 
+/**
+ * Avatar da pessoa. A cor (matiz) é o único lugar onde a identidade de cada
+ * um aparece — não espalhar pelo resto da interface. Sem `hue` = ninguém.
+ */
 export function Avatar({
   initials,
-  color,
+  hue,
   size = 24,
   title,
+  className,
 }: {
-  initials: string;
-  color?: string;
+  initials?: string;
+  hue?: number;
   size?: number;
   title?: string;
+  className?: string;
 }) {
+  const empty = hue === undefined;
   return (
     <span
       title={title}
-      className="inline-flex shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-[var(--color-foreground)]"
+      className={cn(
+        "inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold leading-none",
+        empty &&
+          "border border-dashed border-[var(--color-muted-foreground)]/50 text-[var(--color-muted-foreground)]",
+        className,
+      )}
       style={{
         width: size,
         height: size,
-        backgroundColor: color ? `${color}33` : "var(--color-muted)",
+        fontSize: Math.max(9, Math.round(size * 0.4)),
+        ...(empty
+          ? null
+          : {
+              backgroundColor: `oklch(var(--avatar-l) var(--avatar-c) ${hue})`,
+              color: `oklch(var(--avatar-fg-l) var(--avatar-fg-c) ${hue})`,
+            }),
       }}
     >
       {initials}
@@ -62,7 +80,7 @@ export function Dot({ color }: { color: string }) {
 
 export function PriorityBubble({
   color,
-  size = 14,
+  size = 10,
   title,
 }: {
   color: string;

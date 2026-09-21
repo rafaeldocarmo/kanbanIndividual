@@ -1,11 +1,22 @@
 "use server";
 
 import { db } from "@/db/client";
-import { activities, activityStatusUpdates } from "@/db/schema";
+import {
+  activities,
+  activityComments,
+  activityStatusUpdates,
+} from "@/db/schema";
 import { CACHE_TAGS, nextPositionForStage } from "@/db/queries";
-import { activityInput, statusUpdateInput } from "@/lib/validators";
+import { getCurrentUserId } from "@/lib/current-user";
+import {
+  activityInput,
+  assignInput,
+  blockedByInput,
+  commentInput,
+  statusUpdateInput,
+} from "@/lib/validators";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
@@ -21,7 +32,10 @@ export async function createActivity(input: unknown): Promise<ActionResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Inválido" };
   }
-  const position = await nextPositionForStage(parsed.data.stageId);
+  const [position, me] = await Promise.all([
+    nextPositionForStage(parsed.data.stageId),
+    getCurrentUserId(),
+  ]);
   const today = new Date().toISOString().slice(0, 10);
   const [row] = await db
     .insert(activities)
@@ -33,6 +47,7 @@ export async function createActivity(input: unknown): Promise<ActionResult> {
       assigneeId: parsed.data.assigneeId ?? null,
       priority: parsed.data.priority,
       position: position.toString(),
+      updatedById: me,
     })
     .returning({ id: activities.id });
 
@@ -63,6 +78,7 @@ export async function updateActivity(input: unknown): Promise<ActionResult> {
       assigneeId: parsed.data.assigneeId ?? null,
       priority: parsed.data.priority,
       updatedAt: new Date(),
+      updatedById: await getCurrentUserId(),
     })
     .where(eq(activities.id, parsed.data.id));
 
@@ -86,12 +102,17 @@ export async function addStatusUpdate(input: unknown): Promise<ActionResult> {
     activityId: parsed.data.activityId,
     content: parsed.data.content,
   });
-  await db
-    .update(activities)
-    .set({ updatedAt: new Date() })
-    .where(eq(activities.id, parsed.data.activityId));
+  await touchActivity(parsed.data.activityId);
   revalidateActivities();
   return { ok: true };
+}
+
+/** Marca o item como atualizado agora, por quem está usando o app. */
+async function touchActivity(id: string) {
+  await db
+    .update(activities)
+    .set({ updatedAt: new Date(), updatedById: await getCurrentUserId() })
+    .where(eq(activities.id, id));
 }
 
 export async function deleteStatusUpdate(id: string): Promise<ActionResult> {
@@ -122,7 +143,10 @@ export async function duplicateActivity(id: string): Promise<ActionResult> {
     .where(eq(activities.id, id))
     .limit(1);
   if (!src) return { ok: false, error: "Atividade não encontrada" };
-  const position = await nextPositionForStage(src.stageId);
+  const [position, me] = await Promise.all([
+    nextPositionForStage(src.stageId),
+    getCurrentUserId(),
+  ]);
   await db.insert(activities).values({
     name: `${src.name} (cópia)`,
     dueDate: src.dueDate,
@@ -131,6 +155,7 @@ export async function duplicateActivity(id: string): Promise<ActionResult> {
     assigneeId: src.assigneeId,
     priority: src.priority,
     position: position.toString(),
+    updatedById: me,
   });
 
   revalidateActivities();
@@ -195,16 +220,97 @@ export async function moveActivity(input: unknown): Promise<ActionResult> {
     newPos = 1000;
   }
 
-  const updates: Record<string, unknown> = {
-    position: newPos.toString(),
-    updatedAt: new Date(),
-  };
-  if (toStageId !== undefined) updates.stageId = toStageId;
-  if (toJourneyId !== undefined) updates.journeyId = toJourneyId;
-  if (toAssigneeId !== undefined) updates.assigneeId = toAssigneeId;
+  const updates: Record<string, unknown> = { position: newPos.toString() };
+  // Só reordenar dentro da mesma coluna não conta como atualização: o
+  // "há X dias" mede item parado, e mudar a ordem não o faz andar.
+  const changed: SQL[] = [];
+  if (toStageId !== undefined) {
+    updates.stageId = toStageId;
+    changed.push(sql`${activities.stageId} is distinct from ${toStageId}`);
+  }
+  if (toJourneyId !== undefined) {
+    updates.journeyId = toJourneyId;
+    changed.push(sql`${activities.journeyId} is distinct from ${toJourneyId}`);
+  }
+  if (toAssigneeId !== undefined) {
+    updates.assigneeId = toAssigneeId;
+    changed.push(
+      sql`${activities.assigneeId} is distinct from ${toAssigneeId}`,
+    );
+  }
+  if (changed.length > 0) {
+    const me = await getCurrentUserId();
+    const anyChange = sql.join(changed, sql` or `);
+    updates.updatedAt = sql`case when ${anyChange} then now() else ${activities.updatedAt} end`;
+    updates.updatedById = sql`case when ${anyChange} then ${me}::uuid else ${activities.updatedById} end`;
+  }
 
   await db.update(activities).set(updates).where(eq(activities.id, id));
 
+  revalidateActivities();
+  return { ok: true };
+}
+
+/** Handoff em 1 clique: troca o responsável sem mexer na posição. */
+export async function assignActivity(input: unknown): Promise<ActionResult> {
+  const parsed = assignInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Responsável inválido" };
+  await db
+    .update(activities)
+    .set({
+      assigneeId: parsed.data.assigneeId,
+      updatedAt: new Date(),
+      updatedById: await getCurrentUserId(),
+    })
+    .where(eq(activities.id, parsed.data.id));
+  revalidateActivities();
+  return { ok: true };
+}
+
+export async function setBlockedBy(input: unknown): Promise<ActionResult> {
+  const parsed = blockedByInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Bloqueio inválido" };
+  await db
+    .update(activities)
+    .set({
+      blockedBy: parsed.data.blockedBy,
+      updatedAt: new Date(),
+      updatedById: await getCurrentUserId(),
+    })
+    .where(eq(activities.id, parsed.data.id));
+  revalidateActivities();
+  return { ok: true };
+}
+
+const NO_IDENTITY = "Escolha quem você é no topo para comentar";
+
+export async function addComment(input: unknown): Promise<ActionResult> {
+  const parsed = commentInput.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Inválido" };
+  }
+  const me = await getCurrentUserId();
+  if (!me) return { ok: false, error: NO_IDENTITY };
+  await db.insert(activityComments).values({
+    activityId: parsed.data.activityId,
+    authorId: me,
+    content: parsed.data.content,
+  });
+  await touchActivity(parsed.data.activityId);
+  revalidateActivities();
+  return { ok: true };
+}
+
+/** Cada um apaga só o próprio comentário. */
+export async function deleteComment(id: string): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(id).success) {
+    return { ok: false, error: "ID inválido" };
+  }
+  const me = await getCurrentUserId();
+  if (!me) return { ok: false, error: NO_IDENTITY };
+  await db
+    .delete(activityComments)
+    .where(and(eq(activityComments.id, id), eq(activityComments.authorId, me)));
   revalidateActivities();
   return { ok: true };
 }

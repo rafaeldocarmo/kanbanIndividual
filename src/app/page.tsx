@@ -6,12 +6,23 @@ import {
   getJourneys,
   getStages,
 } from "@/db/queries";
-import type { BootstrapData, GroupBy, ViewMode } from "@/lib/types";
+import type {
+  BootstrapData,
+  GroupBy,
+  Lanes,
+  Scope,
+  ViewMode,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  searchParams: Promise<{ view?: string; group?: string }>;
+  searchParams: Promise<{
+    view?: string;
+    group?: string;
+    scope?: string;
+    lanes?: string;
+  }>;
 };
 
 export default async function Page({ searchParams }: PageProps) {
@@ -29,8 +40,16 @@ export default async function Page({ searchParams }: PageProps) {
   const initialView: ViewMode = sp.view === "board" ? "board" : "list";
   const initialGroup: GroupBy =
     sp.group === "journey" || sp.group === "assignee" ? sp.group : "status";
+  const initialScope: Scope = sp.scope === "mine" ? "mine" : "team";
+  const initialLanes: Lanes = sp.lanes === "person" ? "person" : "none";
 
   return (
-    <AppShell data={data} initialView={initialView} initialGroup={initialGroup} />
+    <AppShell
+      data={data}
+      initialView={initialView}
+      initialGroup={initialGroup}
+      initialScope={initialScope}
+      initialLanes={initialLanes}
+    />
   );
 }

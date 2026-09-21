@@ -24,9 +24,11 @@ import {
 import { ActivityRow } from "@/components/activity/activity-row";
 import type { ActivityView, GroupBy } from "@/lib/types";
 import type { Assignee, Journey, Stage } from "@/db/schema";
-import { cn } from "@/lib/utils";
+import { cn, positionBetween } from "@/lib/utils";
 import { moveActivity } from "@/app/actions/activities";
 import { useActivitiesContext, type Mutation } from "@/components/app-shell";
+import { PersonAvatar } from "@/components/team/assignee-picker";
+import { DONE_STAGE } from "@/lib/team";
 
 type Props = {
   activities: ActivityView[];
@@ -42,6 +44,8 @@ type Group = {
   key: string;
   name: string;
   items: ActivityView[];
+  /** Agrupado por responsável: mostra o avatar no cabeçalho. */
+  personId?: string | null;
 };
 
 function groupActivities(
@@ -73,10 +77,16 @@ function groupActivities(
     key: a.id,
     name: a.name,
     items: activities.filter((act) => act.assigneeId === a.id),
+    personId: a.id,
   }));
   const orphans = activities.filter((a) => !a.assigneeId);
   if (orphans.length)
-    groups.push({ key: "_none", name: "Sem responsável", items: orphans });
+    groups.push({
+      key: "_none",
+      name: "Sem responsável",
+      items: orphans,
+      personId: null,
+    });
   return groups;
 }
 
@@ -101,6 +111,9 @@ function GroupSection({
           <ChevronRight className="h-4 w-4 text-[var(--color-muted-foreground)]" />
         ) : (
           <ChevronDown className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+        )}
+        {group.personId !== undefined && (
+          <PersonAvatar id={group.personId} size={20} />
         )}
         <span className="text-sm font-semibold">{group.name}</span>
         <span className="ml-1 rounded-full bg-[var(--color-muted)] px-2 py-0.5 text-xs text-[var(--color-muted-foreground)]">
@@ -158,18 +171,6 @@ function GroupDrop({
   );
 }
 
-function computePositionBetween(
-  before: ActivityView | null,
-  after: ActivityView | null,
-): number {
-  const beforePos = before ? Number(before.position) : null;
-  const afterPos = after ? Number(after.position) : null;
-  if (beforePos !== null && afterPos !== null) return (beforePos + afterPos) / 2;
-  if (beforePos !== null) return beforePos + 1000;
-  if (afterPos !== null) return afterPos - 1000;
-  return 1000;
-}
-
 export function ListView({
   activities,
   stages,
@@ -220,7 +221,7 @@ export function ListView({
   const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>(
     () => {
       const initial: Record<string, boolean> = {};
-      const done = stages.find((s) => s.name === "Concluído");
+      const done = stages.find((s) => s.name === DONE_STAGE);
       if (done) initial[done.id] = true;
       return initial;
     },
@@ -352,7 +353,7 @@ export function ListView({
       return;
     }
 
-    const newPos = computePositionBetween(beforeNeighbor, afterNeighbor);
+    const newPos = positionBetween(beforeNeighbor, afterNeighbor);
 
     const action: Mutation = {
       type: "move",
@@ -401,6 +402,7 @@ export function ListView({
 
   return (
     <DndContext
+      id="list-dnd"
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
