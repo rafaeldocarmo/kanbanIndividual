@@ -1,6 +1,7 @@
 import { db } from "./client";
 import {
   activities,
+  activityAssignees,
   activityComments,
   activityStatusUpdates,
   assignees,
@@ -60,12 +61,12 @@ export const getAssignees = unstable_cache(
 );
 
 export const getActivities = unstable_cache(_getActivities, ["activities"], {
-  // Depende de atividades + metadados (stage/journey/assignee fazem join).
+  // Depende de atividades + metadados (stage/journey/equipe fazem join).
   tags: [CACHE_TAGS.activities, CACHE_TAGS.meta],
 });
 
 async function _getActivities() {
-  const [rows, statusRows, commentRows] = await Promise.all([
+  const [rows, statusRows, commentRows, assigneeRows] = await Promise.all([
     db
       .select({
         id: activities.id,
@@ -75,8 +76,8 @@ async function _getActivities() {
         position: activities.position,
         stageId: activities.stageId,
         journeyId: activities.journeyId,
-        assigneeId: activities.assigneeId,
         blockedBy: activities.blockedBy,
+        completedAt: activities.completedAt,
         createdAt: activities.createdAt,
         updatedAt: activities.updatedAt,
         updatedById: activities.updatedById,
@@ -84,14 +85,10 @@ async function _getActivities() {
         stageColor: stages.color,
         journeyName: journeys.name,
         journeyColor: journeys.color,
-        assigneeName: assignees.name,
-        assigneeInitials: assignees.initials,
-        assigneeColor: assignees.color,
       })
       .from(activities)
       .leftJoin(stages, eq(stages.id, activities.stageId))
       .leftJoin(journeys, eq(journeys.id, activities.journeyId))
-      .leftJoin(assignees, eq(assignees.id, activities.assigneeId))
       .orderBy(asc(activities.position)),
     db
       .select()
@@ -101,7 +98,23 @@ async function _getActivities() {
       .select()
       .from(activityComments)
       .orderBy(asc(activityComments.createdAt)),
+    // Na ordem da equipe (a mesma de getAssignees).
+    db
+      .select({
+        activityId: activityAssignees.activityId,
+        assigneeId: activityAssignees.assigneeId,
+      })
+      .from(activityAssignees)
+      .innerJoin(assignees, eq(assignees.id, activityAssignees.assigneeId))
+      .orderBy(sql`${assignees.name} = 'Outros'`, asc(assignees.name)),
   ]);
+
+  const assigneesByActivity = new Map<string, string[]>();
+  for (const r of assigneeRows) {
+    const arr = assigneesByActivity.get(r.activityId);
+    if (arr) arr.push(r.assigneeId);
+    else assigneesByActivity.set(r.activityId, [r.assigneeId]);
+  }
 
   const statusByActivity = new Map<
     string,
@@ -132,6 +145,7 @@ async function _getActivities() {
     return {
       ...r,
       position: String(r.position),
+      assigneeIds: assigneesByActivity.get(r.id) ?? [],
       statusUpdates: history,
       lastStatus: history[0]?.content ?? null,
       comments: commentsByActivity.get(r.id) ?? [],

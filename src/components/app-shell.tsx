@@ -9,7 +9,7 @@ import { BoardView } from "@/components/board-view";
 import { QuickAdd } from "@/components/quick-add";
 import { TeamLoad } from "@/components/team/team-load";
 import { useTeam } from "@/components/team/team-provider";
-import { isMine } from "@/lib/team";
+import { completionAfter, isMine } from "@/lib/team";
 
 const ActivityDialog = dynamic(
   () =>
@@ -54,10 +54,7 @@ export type Mutation =
       journeyId?: string | null;
       journeyName?: string | null;
       journeyColor?: string | null;
-      assigneeId?: string | null;
-      assigneeName?: string | null;
-      assigneeInitials?: string | null;
-      assigneeColor?: string | null;
+      assigneeIds?: string[];
       position?: string;
     }
   | {
@@ -85,7 +82,12 @@ function reducer(state: ActivityView[], action: Stamped): ActivityView[] {
       return [action.activity, ...state];
     case "update":
       return state.map((a) =>
-        a.id === action.activity.id ? touch(action.activity) : a,
+        a.id === action.activity.id
+          ? touch({
+              ...action.activity,
+              completedAt: completionAfter(a, action.activity),
+            })
+          : a,
       );
     case "delete":
       return state.filter((a) => a.id !== action.id);
@@ -96,24 +98,21 @@ function reducer(state: ActivityView[], action: Stamped): ActivityView[] {
         const changed =
           (action.stageId !== undefined && action.stageId !== a.stageId) ||
           (action.journeyId !== undefined && action.journeyId !== a.journeyId) ||
-          (action.assigneeId !== undefined && action.assigneeId !== a.assigneeId);
+          (action.assigneeIds !== undefined &&
+            action.assigneeIds.join() !== a.assigneeIds.join());
         const out: ActivityView = changed ? touch(a) : { ...a };
         if (action.stageId !== undefined) {
           out.stageId = action.stageId;
           out.stageName = action.stageName ?? null;
           out.stageColor = action.stageColor ?? null;
+          out.completedAt = completionAfter(a, out);
         }
         if (action.journeyId !== undefined) {
           out.journeyId = action.journeyId;
           out.journeyName = action.journeyName ?? null;
           out.journeyColor = action.journeyColor ?? null;
         }
-        if (action.assigneeId !== undefined) {
-          out.assigneeId = action.assigneeId;
-          out.assigneeName = action.assigneeName ?? null;
-          out.assigneeInitials = action.assigneeInitials ?? null;
-          out.assigneeColor = action.assigneeColor ?? null;
-        }
+        if (action.assigneeIds !== undefined) out.assigneeIds = action.assigneeIds;
         if (action.position !== undefined) out.position = action.position;
         return out;
       });
@@ -194,7 +193,7 @@ export function AppShell({
   initialScope,
   initialLanes,
 }: Props) {
-  const { me } = useTeam();
+  const { me, member } = useTeam();
   const [search, setSearch] = React.useState("");
   const [group, setGroup] = useQueryState(
     "group",
@@ -284,11 +283,13 @@ export function AppShell({
         a.name.toLowerCase().includes(q) ||
         a.lastStatus?.toLowerCase().includes(q) ||
         a.journeyName?.toLowerCase().includes(q) ||
-        a.assigneeName?.toLowerCase().includes(q) ||
+        a.assigneeIds.some((id) =>
+          member(id)?.name.toLowerCase().includes(q),
+        ) ||
         a.blockedBy?.toLowerCase().includes(q)
       );
     });
-  }, [optimisticActivities, search, mineOnly, me]);
+  }, [optimisticActivities, search, mineOnly, me, member]);
 
   return (
     <ActivitiesContext.Provider value={ctxValue}>

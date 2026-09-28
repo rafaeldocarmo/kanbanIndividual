@@ -74,7 +74,7 @@ export function BlockedByItems({
       )}
       <DropdownMenuLabel>Bloqueado por</DropdownMenuLabel>
       {team
-        .filter((m) => m.id !== activity.assigneeId)
+        .filter((m) => !activity.assigneeIds.includes(m.id))
         .map((m) => (
           <DropdownMenuItem key={m.id} onSelect={() => set(m.name)}>
             <Avatar initials={m.initials} hue={m.hue} size={20} />

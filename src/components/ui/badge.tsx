@@ -34,12 +34,14 @@ export function Avatar({
   size = 24,
   title,
   className,
+  style,
 }: {
   initials?: string;
   hue?: number;
   size?: number;
   title?: string;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   const empty = hue === undefined;
   return (
@@ -61,6 +63,7 @@ export function Avatar({
               backgroundColor: `oklch(var(--avatar-l) var(--avatar-c) ${hue})`,
               color: `oklch(var(--avatar-fg-l) var(--avatar-fg-c) ${hue})`,
             }),
+        ...style,
       }}
     >
       {initials}

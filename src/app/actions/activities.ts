@@ -3,13 +3,16 @@
 import { db } from "@/db/client";
 import {
   activities,
+  activityAssignees,
   activityComments,
   activityStatusUpdates,
 } from "@/db/schema";
-import { CACHE_TAGS, nextPositionForStage } from "@/db/queries";
+import { CACHE_TAGS, getStages, nextPositionForStage } from "@/db/queries";
 import { getCurrentUserId } from "@/lib/current-user";
+import { DONE_STAGE } from "@/lib/team";
 import {
   activityInput,
+  assigneeIds,
   assignInput,
   blockedByInput,
   commentInput,
@@ -17,9 +20,55 @@ import {
 } from "@/lib/validators";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq, sql, type SQL } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
 import { z } from "zod";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
+type Stmt = BatchItem<"pg">;
+
+/** Executa os comandos numa única ida ao banco, de forma atômica. */
+async function runAll(stmts: Stmt[]) {
+  if (stmts.length > 0) await db.batch(stmts as [Stmt, ...Stmt[]]);
+}
+
+/** Substitui o conjunto de responsáveis da atividade. */
+function setAssigneesStmts(activityId: string, ids: string[]): Stmt[] {
+  const clear = db
+    .delete(activityAssignees)
+    .where(eq(activityAssignees.activityId, activityId));
+  if (ids.length === 0) return [clear];
+  return [
+    clear,
+    db
+      .insert(activityAssignees)
+      .values(ids.map((assigneeId) => ({ activityId, assigneeId }))),
+  ];
+}
+
+async function assigneesOf(activityId: string) {
+  const rows = await db
+    .select({ id: activityAssignees.assigneeId })
+    .from(activityAssignees)
+    .where(eq(activityAssignees.activityId, activityId));
+  return rows.map((r) => r.id);
+}
+
+const sameSet = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((x) => b.includes(x));
+
+async function isDoneStage(stageId: string) {
+  const stages = await getStages();
+  return stages.find((s) => s.name === DONE_STAGE)?.id === stageId;
+}
+
+/**
+ * `completed_at` para um update que define a etapa: carimba ao entrar em
+ * "Concluído", mantém se já estava lá e limpa ao sair.
+ */
+async function completedAtFor(toStageId: string) {
+  if (!(await isDoneStage(toStageId))) return null;
+  return sql`case when ${activities.stageId} is distinct from ${toStageId} then now() else ${activities.completedAt} end`;
+}
 
 /** Invalida o cache de atividades e atualiza a rota do Kanban. */
 function revalidateActivities() {
@@ -32,31 +81,37 @@ export async function createActivity(input: unknown): Promise<ActionResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Inválido" };
   }
-  const [position, me] = await Promise.all([
+  const [position, me, done] = await Promise.all([
     nextPositionForStage(parsed.data.stageId),
     getCurrentUserId(),
+    isDoneStage(parsed.data.stageId),
   ]);
   const today = new Date().toISOString().slice(0, 10);
-  const [row] = await db
-    .insert(activities)
-    .values({
+  // Id gerado aqui para gravar atividade, responsáveis e status num lote só.
+  const id = crypto.randomUUID();
+  const stmts: Stmt[] = [
+    db.insert(activities).values({
+      id,
       name: parsed.data.name,
       dueDate: today,
       stageId: parsed.data.stageId,
       journeyId: parsed.data.journeyId ?? null,
-      assigneeId: parsed.data.assigneeId ?? null,
       priority: parsed.data.priority,
       position: position.toString(),
       updatedById: me,
-    })
-    .returning({ id: activities.id });
-
+      completedAt: done ? new Date() : null,
+    }),
+    ...setAssigneesStmts(id, parsed.data.assigneeIds).slice(1),
+  ];
   if (parsed.data.initialStatus && parsed.data.initialStatus.trim()) {
-    await db.insert(activityStatusUpdates).values({
-      activityId: row.id,
-      content: parsed.data.initialStatus.trim(),
-    });
+    stmts.push(
+      db.insert(activityStatusUpdates).values({
+        activityId: id,
+        content: parsed.data.initialStatus.trim(),
+      }),
+    );
   }
+  await runAll(stmts);
 
   revalidateActivities();
   return { ok: true };
@@ -69,18 +124,25 @@ export async function updateActivity(input: unknown): Promise<ActionResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Inválido" };
   }
-  await db
-    .update(activities)
-    .set({
-      name: parsed.data.name,
-      stageId: parsed.data.stageId,
-      journeyId: parsed.data.journeyId ?? null,
-      assigneeId: parsed.data.assigneeId ?? null,
-      priority: parsed.data.priority,
-      updatedAt: new Date(),
-      updatedById: await getCurrentUserId(),
-    })
-    .where(eq(activities.id, parsed.data.id));
+  const [me, completedAt] = await Promise.all([
+    getCurrentUserId(),
+    completedAtFor(parsed.data.stageId),
+  ]);
+  await runAll([
+    db
+      .update(activities)
+      .set({
+        name: parsed.data.name,
+        stageId: parsed.data.stageId,
+        journeyId: parsed.data.journeyId ?? null,
+        priority: parsed.data.priority,
+        updatedAt: new Date(),
+        updatedById: me,
+        completedAt,
+      })
+      .where(eq(activities.id, parsed.data.id)),
+    ...setAssigneesStmts(parsed.data.id, parsed.data.assigneeIds),
+  ]);
 
   if (parsed.data.initialStatus && parsed.data.initialStatus.trim()) {
     await db.insert(activityStatusUpdates).values({
@@ -143,20 +205,27 @@ export async function duplicateActivity(id: string): Promise<ActionResult> {
     .where(eq(activities.id, id))
     .limit(1);
   if (!src) return { ok: false, error: "Atividade não encontrada" };
-  const [position, me] = await Promise.all([
+  const [position, me, done, srcAssignees] = await Promise.all([
     nextPositionForStage(src.stageId),
     getCurrentUserId(),
+    isDoneStage(src.stageId),
+    assigneesOf(src.id),
   ]);
-  await db.insert(activities).values({
-    name: `${src.name} (cópia)`,
-    dueDate: src.dueDate,
-    stageId: src.stageId,
-    journeyId: src.journeyId,
-    assigneeId: src.assigneeId,
-    priority: src.priority,
-    position: position.toString(),
-    updatedById: me,
-  });
+  const copyId = crypto.randomUUID();
+  await runAll([
+    db.insert(activities).values({
+      id: copyId,
+      name: `${src.name} (cópia)`,
+      dueDate: src.dueDate,
+      stageId: src.stageId,
+      journeyId: src.journeyId,
+      priority: src.priority,
+      position: position.toString(),
+      updatedById: me,
+      completedAt: done ? new Date() : null,
+    }),
+    ...setAssigneesStmts(copyId, srcAssignees).slice(1),
+  ]);
 
   revalidateActivities();
   return { ok: true };
@@ -166,7 +235,7 @@ const moveSchema = z.object({
   id: z.string().uuid(),
   toStageId: z.string().uuid().optional(),
   toJourneyId: z.string().uuid().nullable().optional(),
-  toAssigneeId: z.string().uuid().nullable().optional(),
+  toAssigneeIds: assigneeIds.optional(),
   beforeId: z.string().uuid().optional().nullable(),
   afterId: z.string().uuid().optional().nullable(),
 });
@@ -176,7 +245,7 @@ export async function moveActivity(input: unknown): Promise<ActionResult> {
   if (!parsed.success) {
     return { ok: false, error: "Movimento inválido" };
   }
-  const { id, toStageId, toJourneyId, toAssigneeId, beforeId, afterId } =
+  const { id, toStageId, toJourneyId, toAssigneeIds, beforeId, afterId } =
     parsed.data;
 
   const [beforeRow, afterRow, currentRow] = await Promise.all([
@@ -226,43 +295,53 @@ export async function moveActivity(input: unknown): Promise<ActionResult> {
   const changed: SQL[] = [];
   if (toStageId !== undefined) {
     updates.stageId = toStageId;
+    updates.completedAt = await completedAtFor(toStageId);
     changed.push(sql`${activities.stageId} is distinct from ${toStageId}`);
   }
   if (toJourneyId !== undefined) {
     updates.journeyId = toJourneyId;
     changed.push(sql`${activities.journeyId} is distinct from ${toJourneyId}`);
   }
-  if (toAssigneeId !== undefined) {
-    updates.assigneeId = toAssigneeId;
-    changed.push(
-      sql`${activities.assigneeId} is distinct from ${toAssigneeId}`,
-    );
-  }
-  if (changed.length > 0) {
+  // Responsáveis: arrastar entre raias/grupos de pessoa troca o conjunto.
+  const assigneesChanged =
+    toAssigneeIds !== undefined && !sameSet(await assigneesOf(id), toAssigneeIds);
+  if (assigneesChanged || changed.length > 0) {
     const me = await getCurrentUserId();
-    const anyChange = sql.join(changed, sql` or `);
-    updates.updatedAt = sql`case when ${anyChange} then now() else ${activities.updatedAt} end`;
-    updates.updatedById = sql`case when ${anyChange} then ${me}::uuid else ${activities.updatedById} end`;
+    if (assigneesChanged) {
+      updates.updatedAt = new Date();
+      updates.updatedById = me;
+    } else {
+      const anyChange = sql.join(changed, sql` or `);
+      updates.updatedAt = sql`case when ${anyChange} then now() else ${activities.updatedAt} end`;
+      updates.updatedById = sql`case when ${anyChange} then ${me}::uuid else ${activities.updatedById} end`;
+    }
   }
 
-  await db.update(activities).set(updates).where(eq(activities.id, id));
+  await runAll([
+    db.update(activities).set(updates).where(eq(activities.id, id)),
+    ...(assigneesChanged && toAssigneeIds
+      ? setAssigneesStmts(id, toAssigneeIds)
+      : []),
+  ]);
 
   revalidateActivities();
   return { ok: true };
 }
 
-/** Handoff em 1 clique: troca o responsável sem mexer na posição. */
+/**
+ * Define os responsáveis (handoff em 1 clique, adicionar ou remover alguém)
+ * sem mexer na posição.
+ */
 export async function assignActivity(input: unknown): Promise<ActionResult> {
   const parsed = assignInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Responsável inválido" };
-  await db
-    .update(activities)
-    .set({
-      assigneeId: parsed.data.assigneeId,
-      updatedAt: new Date(),
-      updatedById: await getCurrentUserId(),
-    })
-    .where(eq(activities.id, parsed.data.id));
+  await runAll([
+    db
+      .update(activities)
+      .set({ updatedAt: new Date(), updatedById: await getCurrentUserId() })
+      .where(eq(activities.id, parsed.data.id)),
+    ...setAssigneesStmts(parsed.data.id, parsed.data.assigneeIds),
+  ]);
   revalidateActivities();
   return { ok: true };
 }

@@ -145,7 +145,10 @@ export function ActivityStatusDialog({
           <span className="flex items-center gap-1.5">
             <AssigneePicker activity={activity} size={22} />
             <span className="text-sm text-[var(--color-foreground)]">
-              {activity.assigneeName ?? "Sem responsável"}
+              {activity.assigneeIds
+                .map((id) => member(id)?.name)
+                .filter(Boolean)
+                .join(", ") || "Sem responsável"}
             </span>
           </span>
           <span aria-hidden>·</span>

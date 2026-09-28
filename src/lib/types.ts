@@ -17,8 +17,10 @@ export type ActivityView = {
   position: string;
   stageId: string;
   journeyId: string | null;
-  assigneeId: string | null;
+  /** Um ou mais responsáveis (vazio = sem responsável), na ordem da equipe. */
+  assigneeIds: string[];
   blockedBy: string | null;
+  completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   updatedById: string | null;
@@ -26,9 +28,6 @@ export type ActivityView = {
   stageColor: string | null;
   journeyName: string | null;
   journeyColor: string | null;
-  assigneeName: string | null;
-  assigneeInitials: string | null;
-  assigneeColor: string | null;
   statusUpdates: StatusEntry[];
   lastStatus: string | null;
   /** Mais antigo → mais recente (ordem de conversa). */

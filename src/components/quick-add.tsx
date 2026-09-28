@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Layers, Route, User, ChevronDown } from "lucide-react";
+import { Layers, Route, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,6 +16,8 @@ import type { ActivityView } from "@/lib/types";
 import { createActivity } from "@/app/actions/activities";
 import { useActivitiesContext } from "@/components/app-shell";
 import { useTeam } from "@/components/team/team-provider";
+import { PeopleToggle } from "@/components/team/people-toggle";
+import { DONE_STAGE } from "@/lib/team";
 import { cn, priorityColor } from "@/lib/utils";
 
 type Props = {
@@ -26,7 +28,7 @@ type Props = {
 
 const NONE = "__none__";
 
-export function QuickAdd({ stages, journeys, assignees }: Props) {
+export function QuickAdd({ stages, journeys }: Props) {
   const { mutate } = useActivitiesContext();
   const { me } = useTeam();
   const [name, setName] = React.useState("");
@@ -34,10 +36,9 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
   const [stageId, setStageId] = React.useState(stages[0]?.id ?? "");
   const [journeyId, setJourneyId] = React.useState<string | null>(null);
   // Em equipe, quem cria normalmente é quem pega: padrão = você.
-  const [assigneeId, setAssigneeId] = React.useState<string | null>(
-    me?.id ?? null,
-  );
-  React.useEffect(() => setAssigneeId(me?.id ?? null), [me?.id]);
+  const mine = React.useMemo(() => (me ? [me.id] : []), [me]);
+  const [assigneeIds, setAssigneeIds] = React.useState<string[]>(mine);
+  React.useEffect(() => setAssigneeIds(mine), [mine]);
   const [priority, setPriority] = React.useState<"low" | "medium" | "high">(
     "medium",
   );
@@ -67,7 +68,7 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
     setName("");
     setStatus("");
     setJourneyId(null);
-    setAssigneeId(me?.id ?? null);
+    setAssigneeIds(mine);
     setPriority("medium");
     setStageId(stages[0]?.id ?? "");
   };
@@ -86,9 +87,6 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
 
     const stage = stages.find((s) => s.id === stageId);
     const journey = journeyId ? journeys.find((j) => j.id === journeyId) : null;
-    const assignee = assigneeId
-      ? assignees.find((a) => a.id === assigneeId)
-      : null;
     const initialStatusTrim = status.trim();
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
@@ -111,8 +109,9 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
       position: "9999999999",
       stageId,
       journeyId,
-      assigneeId,
+      assigneeIds,
       blockedBy: null,
+      completedAt: stage?.name === DONE_STAGE ? now : null,
       createdAt: now,
       updatedAt: now,
       updatedById: me?.id ?? null,
@@ -120,9 +119,6 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
       stageColor: stage?.color ?? null,
       journeyName: journey?.name ?? null,
       journeyColor: journey?.color ?? null,
-      assigneeName: assignee?.name ?? null,
-      assigneeInitials: assignee?.initials ?? null,
-      assigneeColor: assignee?.color ?? null,
       statusUpdates: statusHistory,
       lastStatus: initialStatusTrim || null,
       comments: [],
@@ -133,7 +129,7 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
         name: trimmedName,
         stageId,
         journeyId,
-        assigneeId,
+        assigneeIds,
         priority,
         initialStatus: initialStatusTrim || null,
       }),
@@ -254,23 +250,9 @@ export function QuickAdd({ stages, journeys, assignees }: Props) {
                 </SelectContent>
               </Select>
 
-              <Select
-                value={assigneeId ?? NONE}
-                onValueChange={(v) => setAssigneeId(v === NONE ? null : v)}
-              >
-                <SelectTrigger className="h-9 w-[160px] gap-1.5 border-transparent bg-[var(--color-card)] hover:bg-[var(--color-card)]/70">
-                  <User className="h-3.5 w-3.5 shrink-0 text-[var(--color-muted-foreground)]" />
-                  <SelectValue placeholder="Responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Ninguém</SelectItem>
-                  {assignees.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="hidden h-6 w-px bg-[var(--color-border)] sm:block" />
+
+              <PeopleToggle value={assigneeIds} onChange={setAssigneeIds} />
             </div>
           </div>
         )}

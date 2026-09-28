@@ -1,10 +1,16 @@
 import { z } from "zod";
 
+/** Responsáveis de uma atividade: um ou mais (vazio = sem responsável). */
+export const assigneeIds = z
+  .array(z.string().uuid())
+  .max(20)
+  .transform((ids) => [...new Set(ids)]);
+
 export const activityInput = z.object({
   name: z.string().trim().min(1, "Nome obrigatório").max(200),
   stageId: z.string().uuid(),
   journeyId: z.string().uuid().optional().nullable(),
-  assigneeId: z.string().uuid().optional().nullable(),
+  assigneeIds: assigneeIds.default([]),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   initialStatus: z.string().trim().max(500).optional().nullable(),
 });
@@ -18,7 +24,7 @@ export const statusUpdateInput = z.object({
 
 export const assignInput = z.object({
   id: z.string().uuid(),
-  assigneeId: z.string().uuid().nullable(),
+  assigneeIds,
 });
 
 export const blockedByInput = z.object({

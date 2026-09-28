@@ -35,6 +35,8 @@ import {
 } from "@/app/actions/activities";
 import { useActivitiesContext } from "@/components/app-shell";
 import { useTeam } from "@/components/team/team-provider";
+import { PeopleToggle } from "@/components/team/people-toggle";
+import { DONE_STAGE } from "@/lib/team";
 
 type Props = {
   open: boolean;
@@ -77,7 +79,7 @@ export function ActivityDialog({
       name: "",
       stageId: defaultStageId ?? stages[0]?.id ?? "",
       journeyId: null,
-      assigneeId: null,
+      assigneeIds: [],
       priority: "medium",
       initialStatus: "",
     },
@@ -89,11 +91,12 @@ export function ActivityDialog({
       name: initial?.name ?? "",
       stageId: initial?.stageId ?? defaultStageId ?? stages[0]?.id ?? "",
       journeyId: initial?.journeyId ?? null,
-      assigneeId: initial?.assigneeId ?? null,
+      // Novo item: padrão = você (como no QuickAdd).
+      assigneeIds: initial?.assigneeIds ?? (me ? [me.id] : []),
       priority: initial?.priority ?? "medium",
       initialStatus: "",
     });
-  }, [open, initial, defaultStageId, stages, reset]);
+  }, [open, initial, defaultStageId, stages, reset, me]);
 
   const onSubmit = (values: FormValues) => {
     const payload = {
@@ -107,9 +110,6 @@ export function ActivityDialog({
     const journey = values.journeyId
       ? journeys.find((j) => j.id === values.journeyId)
       : null;
-    const assignee = values.assigneeId
-      ? assignees.find((a) => a.id === values.assigneeId)
-      : null;
 
     if (isEdit && initial) {
       const updated: ActivityView = {
@@ -118,14 +118,11 @@ export function ActivityDialog({
         priority: values.priority,
         stageId: values.stageId,
         journeyId: values.journeyId ?? null,
-        assigneeId: values.assigneeId ?? null,
+        assigneeIds: values.assigneeIds,
         stageName: stage?.name ?? null,
         stageColor: stage?.color ?? null,
         journeyName: journey?.name ?? null,
         journeyColor: journey?.color ?? null,
-        assigneeName: assignee?.name ?? null,
-        assigneeInitials: assignee?.initials ?? null,
-        assigneeColor: assignee?.color ?? null,
         updatedAt: new Date(),
       };
       mutate({ type: "update", activity: updated }, () =>
@@ -151,8 +148,9 @@ export function ActivityDialog({
         position: "9999999999",
         stageId: values.stageId,
         journeyId: values.journeyId ?? null,
-        assigneeId: values.assigneeId ?? null,
+        assigneeIds: values.assigneeIds,
         blockedBy: null,
+        completedAt: stage?.name === DONE_STAGE ? now : null,
         createdAt: now,
         updatedAt: now,
         updatedById: me?.id ?? null,
@@ -160,9 +158,6 @@ export function ActivityDialog({
         stageColor: stage?.color ?? null,
         journeyName: journey?.name ?? null,
         journeyColor: journey?.color ?? null,
-        assigneeName: assignee?.name ?? null,
-        assigneeInitials: assignee?.initials ?? null,
-        assigneeColor: assignee?.color ?? null,
         statusUpdates: statusHistory,
         lastStatus: payload.initialStatus || null,
         comments: [],
@@ -177,7 +172,7 @@ export function ActivityDialog({
 
   const stageId = watch("stageId");
   const journeyId = watch("journeyId");
-  const assigneeId = watch("assigneeId");
+  const assigneeIds = watch("assigneeIds");
   const priority = watch("priority");
 
   const [pendingStatus, setPendingStatus] = React.useState("");
@@ -250,7 +245,7 @@ export function ActivityDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <label className="text-xs font-medium text-[var(--color-muted-foreground)]">
                 Status
@@ -291,29 +286,17 @@ export function ActivityDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-1.5">
-              <label className="text-xs font-medium text-[var(--color-muted-foreground)]">
-                Responsável
-              </label>
-              <Select
-                value={assigneeId ?? NONE}
-                onValueChange={(v) =>
-                  setValue("assigneeId", v === NONE ? null : v)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Ninguém</SelectItem>
-                  {assignees.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Responsáveis
+            </label>
+            <PeopleToggle
+              value={assigneeIds ?? []}
+              onChange={(ids) => setValue("assigneeIds", ids)}
+              showNames
+            />
           </div>
 
           {/* Status history (only for existing activities) */}

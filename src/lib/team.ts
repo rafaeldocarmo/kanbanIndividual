@@ -40,10 +40,59 @@ export function staleness(
   return { days, level: days >= STALE_ALERT_DAYS ? "alert" : "warn" };
 }
 
-/** "Minhas": atribuídas a mim ou travadas esperando por mim. */
+const RECENT_DONE_MS = DAY_MS;
+
+/** Concluído nas últimas 24h (janela móvel, não "hoje"). */
+export function isRecentlyDone(
+  a: Pick<ActivityView, "stageName" | "completedAt">,
+  now: number,
+) {
+  return (
+    a.stageName === DONE_STAGE &&
+    !!a.completedAt &&
+    now - new Date(a.completedAt).getTime() < RECENT_DONE_MS
+  );
+}
+
+/** Tempo curto desde a conclusão: "agora", "há 25 min", "há 3 h". */
+export function completedAgo(completedAt: Date, now: number) {
+  const min = Math.floor((now - new Date(completedAt).getTime()) / 60_000);
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  return `há ${Math.floor(min / 60)} h`;
+}
+
+/**
+ * `completedAt` depois de uma troca de etapa: carimba ao entrar em
+ * "Concluído", limpa ao sair e mantém se a etapa não mudou.
+ */
+export function completionAfter(
+  prev: Pick<ActivityView, "stageId" | "completedAt">,
+  next: Pick<ActivityView, "stageId" | "stageName">,
+): Date | null {
+  if (next.stageId === prev.stageId) return prev.completedAt;
+  return next.stageName === DONE_STAGE ? new Date() : null;
+}
+
+/** "Minhas": sou um dos responsáveis ou o item está travado esperando por mim. */
 export function isMine(
-  a: Pick<ActivityView, "assigneeId" | "blockedBy">,
+  a: Pick<ActivityView, "assigneeIds" | "blockedBy">,
   me: { id: string; name: string },
 ) {
-  return a.assigneeId === me.id || a.blockedBy === me.name;
+  return a.assigneeIds.includes(me.id) || a.blockedBy === me.name;
+}
+
+/**
+ * Responsáveis depois de mover o item da raia/grupo de `from` para `to`
+ * (null = "Sem responsável"): sai quem estava na origem, entra o destino.
+ * Soltar em "Sem responsável" tira todo mundo.
+ */
+export function reassignedIds(
+  ids: string[],
+  from: string | null,
+  to: string | null,
+): string[] {
+  if (to === null) return [];
+  const rest = from === null ? [] : ids.filter((id) => id !== from);
+  return rest.includes(to) ? rest : [...rest, to];
 }

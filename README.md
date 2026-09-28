@@ -31,19 +31,21 @@ pnpm dev          # http://localhost:3000
 O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e "onde travou?".
 
 - **Você é** (topo): quem está usando o app. Sem login — é um cookie (`kb_me`) que define o filtro "Minhas" e assina as alterações
-- **Minhas / Da equipe** (barra de ferramentas): "Minhas" = atribuídas a você **ou** bloqueadas esperando por você
-- **Atribuir em 1 clique**: o avatar na linha/cartão abre o menu da equipe e reatribui na hora
+- **Um ou mais responsáveis** por atividade, todos com o mesmo peso: o item aparece no grupo/raia de cada um e conta na carga de cada um
+- **Minhas / Da equipe** (barra de ferramentas): "Minhas" = você é um dos responsáveis **ou** o item está bloqueado esperando por você
+- **Atribuir em 1 clique**: os avatares na linha/cartão abrem o menu da equipe — clicar no nome troca (handoff: fica só essa pessoa); **+** soma alguém, **✓** remove
 - **Bloqueado por**: alguém da equipe ou um externo em texto livre (ex.: "Fornecedor (externo)"). Selo "bloq. <nome>" na linha e borda vermelha no cartão; pelo menu "…" da linha, pelo selo ou pelo detalhe do item
 - **Faixa de carga**: itens em "Em Andamento" por pessoa, com mini-barra; âmbar acima de 3
 - **Sem atualização há X dias**: "há Xd" em âmbar a partir de 5 dias e vermelho a partir de 10 (fora de Backlog e Concluído). Reordenar na mesma coluna não conta como atualização
-- **Raias por pessoa** no Quadro: arrastar na horizontal muda a etapa, na vertical reatribui
+- **Concluído nas últimas 24h**: grupo aberto na Lista (por status) com o que acabou de ser concluído ("concluído há 3 h"); o resto de "Concluído" segue recolhido. Nas raias, a coluna recolhida mostra só esses. Usa `completed_at`, carimbado ao entrar em "Concluído" e limpo ao sair
+- **Raias por pessoa** no Quadro: arrastar na horizontal muda a etapa; na vertical, a pessoa da raia de origem sai e a de destino entra (vale também para a Lista agrupada por Responsável)
 - **Comentários** no detalhe do item (autor, texto, data), assinados por quem está no "Você é"; cada um apaga só os próprios
-- **Disciplina visual**: cor só por exceção — âmbar para prioridade alta e itens parados, vermelho para bloqueio e parados há 10+ dias. Cada pessoa tem um matiz (mesma luminosidade/croma, OKLCH) usado **só** no avatar
+- **Disciplina visual**: cor só por exceção — âmbar para itens parados e carga acima do limite, vermelho para bloqueio e parados há 10+ dias. Cada pessoa tem um matiz (mesma luminosidade/croma, OKLCH) usado **só** no avatar. A prioridade é a exceção assumida: alta vermelha, média amarela, baixa azul
 
 ### Geral
 
 - Criar, editar, duplicar, excluir e visualizar atividades
-- Campos: nome, descrição, data, jornada, responsável, status, prioridade
+- Campos: nome, descrição, data, jornada, responsáveis, status, prioridade
 - Etapas configuráveis em tabela (padrão: Backlog / Em Análise / Concluído)
 - Visualizações **Lista** (agrupada) e **Quadro** (Kanban) — alternância sem recarregar
 - Agrupar por **Status**, **Jornada** ou **Responsável**
@@ -65,10 +67,12 @@ stages     (id, name, color, position)          ← etapas configuráveis
 journeys   (id, name, color)
 assignees  (id, name, initials, color)
 activities (id, name, description, due_date,
-            stage_id, journey_id, assignee_id,
+            stage_id, journey_id,
             priority, position numeric,
-            blocked_by?, created_at, updated_at, updated_by?)
-activity_comments (id, activity_id, author_id?, content, created_at)
+            blocked_by?, completed_at?,
+            created_at, updated_at, updated_by?)
+activity_assignees (activity_id, assignee_id)   ← um ou mais responsáveis
+activity_comments  (id, activity_id, author_id?, content, created_at)
 
 notes        (id, title?, content, created_at, updated_at)
 reminders    (id, content, due_date?, done, created_at, updated_at)
@@ -79,6 +83,7 @@ saved_queries(id, title, query, position, created_at, updated_at)
 - `stages` em tabela própria → novas etapas sem migration
 - `activities.position` usa **fractional indexing** (numeric) — reordenar sem reescrever vizinhos. Inserções entre A e B usam `(posA + posB) / 2`.
 - `journey` e `assignee` em tabelas (não enum) → editáveis pelo usuário no futuro
+- `activities.assignee_id` é legado (congelado desde a migração para `activity_assignees`); segue no schema como `@deprecated` só para poder desfazer
 
 ### Camadas
 

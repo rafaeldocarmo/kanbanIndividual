@@ -14,11 +14,12 @@ export function getInitials(name: string) {
     .join("");
 }
 
-// Só a prioridade alta pede ação (âmbar); média e baixa ficam em cinza.
+// Exceção deliberada à regra de "cor só por exceção": as três prioridades têm
+// cor própria (vermelho/amarelo/azul). Tons fixos, legíveis nos dois temas.
 const PRIORITY_COLORS: Record<string, string> = {
-  high: "var(--color-warning)",
-  medium: "color-mix(in srgb, var(--color-muted-foreground) 60%, transparent)",
-  low: "color-mix(in srgb, var(--color-muted-foreground) 25%, transparent)",
+  high: "#ef4444",
+  medium: "#eab308",
+  low: "#3b82f6",
 };
 
 export function priorityColor(priority: string | null | undefined) {

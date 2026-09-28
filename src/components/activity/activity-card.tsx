@@ -15,14 +15,16 @@ import type { ActivityView } from "@/lib/types";
 
 type Props = {
   activity: ActivityView;
+  /** Id no dnd-kit; nas raias difere por faixa (o item aparece em várias). */
+  dragId?: string;
   onClick: (a: ActivityView) => void;
   dragging?: boolean;
 };
 
-function ActivityCardImpl({ activity, onClick, dragging }: Props) {
+function ActivityCardImpl({ activity, dragId, onClick, dragging }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
-      id: activity.id,
+      id: dragId ?? activity.id,
       data: { type: "activity", stageId: activity.stageId },
     });
 

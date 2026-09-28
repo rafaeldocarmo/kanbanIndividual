@@ -27,8 +27,9 @@ export function TeamLoad({
     let unassigned = 0;
     for (const a of activities) {
       if (a.stageId !== stageId) continue;
-      if (a.assigneeId) counts.set(a.assigneeId, (counts.get(a.assigneeId) ?? 0) + 1);
-      else unassigned++;
+      // Item compartilhado conta para cada responsável: está no prato de todos.
+      for (const id of a.assigneeIds) counts.set(id, (counts.get(id) ?? 0) + 1);
+      if (a.assigneeIds.length === 0) unassigned++;
     }
     return { counts, unassigned };
   }, [activities, stageId]);

@@ -43,10 +43,12 @@ import {
 } from "@/components/team/blocked-by";
 import { StaleBadge } from "@/components/team/stale-badge";
 import { useTeam } from "@/components/team/team-provider";
-import { DONE_STAGE } from "@/lib/team";
+import { DONE_STAGE, completedAgo, isRecentlyDone } from "@/lib/team";
 
 type Props = {
   activity: ActivityView;
+  /** Id no dnd-kit; agrupado por pessoa difere por grupo (o item se repete). */
+  dragId?: string;
   stages: Stage[];
   onEdit: (a: ActivityView) => void;
   onView: (a: ActivityView) => void;
@@ -55,6 +57,7 @@ type Props = {
 
 function ActivityRowImpl({
   activity,
+  dragId,
   stages,
   onEdit,
   onView,
@@ -67,7 +70,7 @@ function ActivityRowImpl({
   const isDone = activity.stageName === DONE_STAGE;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
-      id: activity.id,
+      id: dragId ?? activity.id,
       data: { type: "activity", activityId: activity.id },
     });
   const style: React.CSSProperties = {
@@ -92,6 +95,7 @@ function ActivityRowImpl({
       statusUpdates: [],
       lastStatus: null,
       blockedBy: null,
+      completedAt: isDone ? new Date() : null,
       comments: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -104,8 +108,15 @@ function ActivityRowImpl({
 
   const handleMove = (toStageId: string) => {
     if (toStageId === activity.stageId) return;
+    const stage = stages.find((s) => s.id === toStageId);
     mutate(
-      { type: "move", id: activity.id, stageId: toStageId },
+      {
+        type: "move",
+        id: activity.id,
+        stageId: toStageId,
+        stageName: stage?.name ?? null,
+        stageColor: stage?.color ?? null,
+      },
       () => moveActivity({ id: activity.id, toStageId }),
     );
   };
@@ -124,7 +135,8 @@ function ActivityRowImpl({
       >
         <GripVertical className="h-4 w-4 text-[var(--color-muted-foreground)]" />
       </button>
-      <AssigneePicker activity={activity} />
+      {/* Largura de 2 avatares: títulos alinhados com 1 ou 2 responsáveis. */}
+      <AssigneePicker activity={activity} reserve={2} />
       <PriorityBubble
         color={priorityColor(activity.priority)}
         title={`Prioridade ${activity.priority}`}
@@ -155,6 +167,14 @@ function ActivityRowImpl({
       <div className="ml-auto flex min-w-0 items-center gap-3">
         <BlockedByControl activity={activity} />
         <StaleBadge activity={activity} />
+        {activity.completedAt && isRecentlyDone(activity, Date.now()) && (
+          <span
+            title={`Concluído em ${format(new Date(activity.completedAt), "dd MMM HH:mm", { locale: ptBR })}`}
+            className="shrink-0 text-xs text-[var(--color-muted-foreground)]"
+          >
+            concluído {completedAgo(activity.completedAt, Date.now())}
+          </span>
+        )}
         {activity.comments.length > 0 && (
           <span
             title={`${activity.comments.length} comentário(s)`}

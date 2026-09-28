@@ -72,6 +72,10 @@ export const activities = pgTable(
     journeyId: uuid("journey_id").references(() => journeys.id, {
       onDelete: "set null",
     }),
+    /**
+     * @deprecated Legado, congelado desde 21/09/2026. Os responsáveis (um ou
+     * mais) ficam em `activity_assignees`. Mantido só para poder desfazer.
+     */
     assigneeId: uuid("assignee_id").references(() => assignees.id, {
       onDelete: "set null",
     }),
@@ -80,6 +84,9 @@ export const activities = pgTable(
     // Quem/o que está travando o item: nome de alguém da equipe ou um externo
     // em texto livre (ex.: "Fornecedor (externo)"). Null = não bloqueado.
     blockedBy: text("blocked_by"),
+    // Quando entrou em "Concluído" (null fora dele). Alimenta "Concluído nas
+    // últimas 24h" — `updated_at` não serve, qualquer comentário o mudaria.
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -94,6 +101,23 @@ export const activities = pgTable(
     stageIdx: index("activities_stage_idx").on(t.stageId, t.position),
     journeyIdx: index("activities_journey_idx").on(t.journeyId),
     assigneeIdx: index("activities_assignee_idx").on(t.assigneeId),
+  }),
+);
+
+/** Responsáveis da atividade — um ou mais, todos com o mesmo peso. */
+export const activityAssignees = pgTable(
+  "activity_assignees",
+  {
+    activityId: uuid("activity_id")
+      .notNull()
+      .references(() => activities.id, { onDelete: "cascade" }),
+    assigneeId: uuid("assignee_id")
+      .notNull()
+      .references(() => assignees.id, { onDelete: "cascade" }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.activityId, t.assigneeId] }),
+    assigneeIdx: index("activity_assignees_assignee_idx").on(t.assigneeId),
   }),
 );
 
@@ -298,8 +322,22 @@ export const journeysRelations = relations(journeys, ({ many }) => ({
 }));
 
 export const assigneesRelations = relations(assignees, ({ many }) => ({
-  activities: many(activities),
+  activities: many(activityAssignees),
 }));
+
+export const activityAssigneesRelations = relations(
+  activityAssignees,
+  ({ one }) => ({
+    activity: one(activities, {
+      fields: [activityAssignees.activityId],
+      references: [activities.id],
+    }),
+    assignee: one(assignees, {
+      fields: [activityAssignees.assigneeId],
+      references: [assignees.id],
+    }),
+  }),
+);
 
 export const tagsRelations = relations(tags, ({ many }) => ({
   activityTags: many(activityTags),
@@ -319,10 +357,7 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     fields: [activities.journeyId],
     references: [journeys.id],
   }),
-  assignee: one(assignees, {
-    fields: [activities.assigneeId],
-    references: [assignees.id],
-  }),
+  assignees: many(activityAssignees),
   tags: many(activityTags),
   statusUpdates: many(activityStatusUpdates),
   comments: many(activityComments),

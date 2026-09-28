@@ -29,7 +29,7 @@ import { Avatar } from "@/components/ui/badge";
 import { useActivitiesContext, type Mutation } from "@/components/app-shell";
 import { useTeam, type TeamMember } from "@/components/team/team-provider";
 import { moveActivity } from "@/app/actions/activities";
-import { DONE_STAGE } from "@/lib/team";
+import { DONE_STAGE, isRecentlyDone, reassignedIds } from "@/lib/team";
 import { cn, positionBetween } from "@/lib/utils";
 import type { ActivityView, Lanes } from "@/lib/types";
 import type { Stage } from "@/db/schema";
@@ -42,39 +42,59 @@ type Props = {
 };
 
 /**
- * Destino de um drop. Sem raias, `assigneeId` fica undefined (não reatribui);
- * com raias, a linha define o responsável (null = sem responsável).
+ * Destino de um drop. Sem raias, `lane` fica undefined (não reatribui); com
+ * raias, é a faixa da pessoa (id) ou NONE ("Sem responsável").
  */
-type Place = { stageId: string; assigneeId?: string | null };
+type Place = { stageId: string; lane?: string };
 type CellData = { type: "cell" } & Place;
 
 const NONE = "_none";
+
+/**
+ * Nas raias, um item com vários responsáveis aparece na faixa de cada um, e
+ * o dnd-kit exige ids únicos: cada cópia arrasta como `faixa::atividade`.
+ */
+const SEP = "::";
+const laneOfDragId = (dragId: string) =>
+  dragId.includes(SEP) ? dragId.split(SEP)[0] : undefined;
+const activityIdOf = (dragId: string) =>
+  dragId.includes(SEP) ? dragId.split(SEP)[1] : dragId;
+const laneToAssignee = (lane: string) => (lane === NONE ? null : lane);
+/** Faixas em que o item aparece: uma por responsável (ou "Sem responsável"). */
+const lanesOf = (a: ActivityView) =>
+  a.assigneeIds.length > 0 ? a.assigneeIds : [NONE];
 
 /** Nas raias, a coluna "Concluído" começa recolhida (como na Lista). */
 function Cell({
   id,
   place,
   items,
+  dragIdOf,
   collapsed,
-  activeId,
+  activeActivityId,
   onCardClick,
   className,
 }: {
   id: string;
   place: Place;
   items: ActivityView[];
+  dragIdOf: (a: ActivityView) => string;
   collapsed?: boolean;
-  activeId: string | null;
+  activeActivityId: string | null;
   onCardClick: (a: ActivityView) => void;
   className?: string;
 }) {
   const data: CellData = { type: "cell", ...place };
   const { setNodeRef, isOver } = useDroppable({ id, data });
-  // Recolhida, só mostra o cartão que está sendo arrastado (se estiver nela).
-  const visible = collapsed ? items.filter((a) => a.id === activeId) : items;
+  // Recolhida, mostra só o concluído nas últimas 24h (e o cartão arrastado).
+  const now = Date.now();
+  const visible = collapsed
+    ? items.filter((a) => a.id === activeActivityId || isRecentlyDone(a, now))
+    : items;
+  const hidden = items.length - visible.length;
   return (
     <SortableContext
-      items={visible.map((i) => i.id)}
+      items={visible.map(dragIdOf)}
       strategy={verticalListSortingStrategy}
     >
       <div
@@ -86,12 +106,18 @@ function Cell({
         )}
       >
         {visible.map((a) => (
-          <ActivityCard key={a.id} activity={a} onClick={onCardClick} />
+          <ActivityCard
+            key={a.id}
+            activity={a}
+            dragId={dragIdOf(a)}
+            onClick={onCardClick}
+          />
         ))}
-        {collapsed && items.length > visible.length && (
+        {collapsed && hidden > 0 && (
           <span className="px-2 py-1 text-xs text-[var(--color-muted-foreground)]">
-            {items.length - visible.length} concluído
-            {items.length - visible.length === 1 ? "" : "s"}
+            {visible.length > 0
+              ? `+${hidden} anterior${hidden === 1 ? "" : "es"}`
+              : `${hidden} concluído${hidden === 1 ? "" : "s"}`}
           </span>
         )}
       </div>
@@ -107,15 +133,16 @@ const laneCollision: CollisionDetection = (args) => {
 
 export function BoardView({ activities, stages, lanes, onView }: Props) {
   const { mutate } = useActivitiesContext();
-  const { team, member } = useTeam();
+  const { team } = useTeam();
   const byPerson = lanes === "person";
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [showDone, setShowDone] = React.useState(false);
   // Pré-visualização efêmera da troca de célula durante o arraste.
   const [preview, setPreview] = React.useState<{
-    id: string;
+    activityId: string;
     stageId: string;
-    assigneeId: string | null;
+    assigneeIds: string[];
+    lane?: string;
   } | null>(null);
 
   const sensors = useSensors(
@@ -123,43 +150,70 @@ export function BoardView({ activities, stages, lanes, onView }: Props) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const activeActivityId = activeId ? activityIdOf(activeId) : null;
+  const fromLane = activeId ? laneOfDragId(activeId) : undefined;
+
   const effective = React.useMemo(() => {
     if (!preview) return activities;
     return activities.map((a) =>
-      a.id === preview.id
-        ? { ...a, stageId: preview.stageId, assigneeId: preview.assigneeId }
+      a.id === preview.activityId
+        ? { ...a, stageId: preview.stageId, assigneeIds: preview.assigneeIds }
         : a,
     );
   }, [activities, preview]);
 
   const keyOf = React.useCallback(
-    (stageId: string, assigneeId: string | null) =>
-      byPerson ? `${assigneeId ?? NONE}:${stageId}` : stageId,
+    (stageId: string, lane?: string) =>
+      byPerson ? `${lane ?? NONE}:${stageId}` : stageId,
     [byPerson],
   );
 
   const cells = React.useMemo(() => {
     const map = new Map<string, ActivityView[]>();
     for (const a of effective) {
-      const k = keyOf(a.stageId, a.assigneeId);
-      const arr = map.get(k);
-      if (arr) arr.push(a);
-      else map.set(k, [a]);
+      for (const lane of byPerson ? lanesOf(a) : [undefined]) {
+        const k = keyOf(a.stageId, lane);
+        const arr = map.get(k);
+        if (arr) arr.push(a);
+        else map.set(k, [a]);
+      }
     }
     return map;
-  }, [effective, keyOf]);
+  }, [effective, keyOf, byPerson]);
+
+  /** Id de arraste da cópia do item nesta faixa. A cópia que está sendo
+   *  arrastada mantém o id de origem ao mudar de faixa (senão o dnd-kit a perde). */
+  const dragIdFor = (a: ActivityView, lane?: string) => {
+    if (!byPerson) return a.id;
+    const currentLane = preview?.lane ?? fromLane;
+    if (activeId && a.id === activeActivityId && lane === currentLane) {
+      return activeId;
+    }
+    return `${lane}${SEP}${a.id}`;
+  };
+
+  /** Responsáveis ao mover a cópia da faixa `from` para a faixa `to`. */
+  const assigneesAfter = (a: ActivityView, from?: string, to?: string) =>
+    byPerson && from !== undefined && to !== undefined && from !== to
+      ? reassignedIds(a.assigneeIds, laneToAssignee(from), laneToAssignee(to))
+      : a.assigneeIds;
 
   /** Onde o item cairia: sobre uma célula vazia/área livre ou sobre outro cartão. */
   const placeOf = (over: Over): Place | null => {
     const data = over.data.current as CellData | { type?: string } | undefined;
     if (data?.type === "cell") {
-      const { stageId, assigneeId } = data as CellData;
-      return { stageId, assigneeId };
+      const { stageId, lane } = data as CellData;
+      return { stageId, lane };
     }
-    const target = effective.find((a) => a.id === over.id);
+    const overId = String(over.id);
+    const target = effective.find((a) => a.id === activityIdOf(overId));
     if (!target) return null;
+    // A cópia arrastada guarda no id a faixa de ORIGEM; sobre ela mesma, a
+    // faixa é onde a pré-visualização a colocou (senão oscila sem parar).
+    const lane =
+      overId === activeId ? (preview?.lane ?? fromLane) : laneOfDragId(overId);
     return byPerson
-      ? { stageId: target.stageId, assigneeId: target.assigneeId }
+      ? { stageId: target.stageId, lane }
       : { stageId: target.stageId };
   };
 
@@ -168,16 +222,22 @@ export function BoardView({ activities, stages, lanes, onView }: Props) {
   };
 
   const handleDragOver = ({ active, over }: DragOverEvent) => {
-    if (!over) return;
-    const current = effective.find((a) => a.id === active.id);
+    // Sobre o próprio espaço reservado não há o que pré-visualizar.
+    if (!over || !activeActivityId || over.id === active.id) return;
+    const original = activities.find((a) => a.id === activeActivityId);
+    const current = effective.find((a) => a.id === activeActivityId);
     const place = placeOf(over);
-    if (!current || !place) return;
-    const assigneeId =
-      place.assigneeId === undefined ? current.assigneeId : place.assigneeId;
-    if (current.stageId === place.stageId && current.assigneeId === assigneeId) {
-      return;
-    }
-    setPreview({ id: current.id, stageId: place.stageId, assigneeId });
+    if (!original || !current || !place) return;
+    const currentLane = preview?.lane ?? fromLane;
+    const lane = place.lane ?? currentLane;
+    if (current.stageId === place.stageId && lane === currentLane) return;
+    setPreview({
+      activityId: original.id,
+      stageId: place.stageId,
+      // Sempre a partir do original: a pré-visualização é substituída, não somada.
+      assigneeIds: assigneesAfter(original, fromLane, lane),
+      lane,
+    });
   };
 
   const handleDragCancel = () => {
@@ -190,26 +250,26 @@ export function BoardView({ activities, stages, lanes, onView }: Props) {
     setPreview(null);
     if (!over) return;
 
-    const id = active.id as string;
+    const id = activityIdOf(active.id as string);
+    const from = laneOfDragId(active.id as string);
     const original = activities.find((a) => a.id === id);
     const place = placeOf(over);
     if (!original || !place) return;
 
     const toStageId = place.stageId;
-    const toAssigneeId =
-      place.assigneeId === undefined ? original.assigneeId : place.assigneeId;
-    const sameCell =
-      original.stageId === toStageId && original.assigneeId === toAssigneeId;
+    const toLane = byPerson ? (place.lane ?? from) : undefined;
+    const toAssigneeIds = assigneesAfter(original, from, toLane);
+    const sameCell = original.stageId === toStageId && toLane === from;
 
     // Ordem final da célula de destino, como a pré-visualização mostrou (o
     // item arrastado já está nela) — mesma lógica de `arrayMove` da Lista.
-    const shown = cells.get(keyOf(toStageId, toAssigneeId)) ?? [];
+    const shown = cells.get(keyOf(toStageId, toLane)) ?? [];
     const oldIndex = shown.findIndex((a) => a.id === id);
     const overIsCell =
       (over.data.current as { type?: string } | undefined)?.type === "cell";
     const overIndex = overIsCell
       ? shown.length - 1
-      : shown.findIndex((a) => a.id === over.id);
+      : shown.findIndex((a) => a.id === activityIdOf(String(over.id)));
     let final: ActivityView[];
     if (oldIndex >= 0) {
       final = overIndex >= 0 ? arrayMove(shown, oldIndex, overIndex) : shown;
@@ -233,28 +293,22 @@ export function BoardView({ activities, stages, lanes, onView }: Props) {
     if (before || after) {
       action.position = positionBetween(before, after).toString();
     }
-    const reassign = toAssigneeId !== original.assigneeId;
-    if (reassign) {
-      const m = member(toAssigneeId);
-      action.assigneeId = toAssigneeId;
-      action.assigneeName = m?.name ?? null;
-      action.assigneeInitials = m?.initials ?? null;
-      action.assigneeColor = m?.color ?? null;
-    }
+    const reassign = toAssigneeIds.join() !== original.assigneeIds.join();
+    if (reassign) action.assigneeIds = toAssigneeIds;
 
     mutate(action, () =>
       moveActivity({
         id,
         toStageId,
-        ...(reassign ? { toAssigneeId } : {}),
+        ...(reassign ? { toAssigneeIds } : {}),
         beforeId: before?.id ?? null,
         afterId: after?.id ?? null,
       }),
     );
   };
 
-  const activeActivity = activeId
-    ? effective.find((a) => a.id === activeId)
+  const activeActivity = activeActivityId
+    ? effective.find((a) => a.id === activeActivityId)
     : null;
 
   const overlay = (
@@ -296,7 +350,8 @@ export function BoardView({ activities, stages, lanes, onView }: Props) {
                   id={`stage:${s.id}`}
                   place={{ stageId: s.id }}
                   items={items}
-                  activeId={activeId}
+                  dragIdOf={(a) => dragIdFor(a)}
+                  activeActivityId={activeActivityId}
                   onCardClick={onView}
                   className="min-h-[100px]"
                 />
@@ -310,7 +365,7 @@ export function BoardView({ activities, stages, lanes, onView }: Props) {
   }
 
   // --- Raias por pessoa: uma faixa por pessoa cruzando as etapas ---
-  const hasUnassigned = activities.some((a) => !a.assigneeId);
+  const hasUnassigned = activities.some((a) => a.assigneeIds.length === 0);
   const laneList: { key: string; member: TeamMember | null }[] = [
     ...team.map((m) => ({ key: m.id, member: m })),
     ...(hasUnassigned ? [{ key: NONE, member: null }] : []),
@@ -372,8 +427,7 @@ export function BoardView({ activities, stages, lanes, onView }: Props) {
 
         {laneList.map(({ key, member: m }) => {
           const open = effective.filter(
-            (a) =>
-              (a.assigneeId ?? NONE) === key && a.stageName !== DONE_STAGE,
+            (a) => lanesOf(a).includes(key) && a.stageName !== DONE_STAGE,
           ).length;
           return (
             <section
@@ -394,21 +448,19 @@ export function BoardView({ activities, stages, lanes, onView }: Props) {
                 </span>
               </div>
               <div className="grid gap-3 pb-3" style={grid}>
-                {stages.map((s) => {
-                  const assigneeId = m?.id ?? null;
-                  return (
-                    <Cell
-                      key={s.id}
-                      id={`cell:${key}:${s.id}`}
-                      place={{ stageId: s.id, assigneeId }}
-                      items={cells.get(keyOf(s.id, assigneeId)) ?? []}
-                      collapsed={s.name === DONE_STAGE && !showDone}
-                      activeId={activeId}
-                      onCardClick={onView}
-                      className="min-h-[64px] bg-[var(--color-muted)]"
-                    />
-                  );
-                })}
+                {stages.map((s) => (
+                  <Cell
+                    key={s.id}
+                    id={`cell:${key}:${s.id}`}
+                    place={{ stageId: s.id, lane: key }}
+                    items={cells.get(keyOf(s.id, key)) ?? []}
+                    dragIdOf={(a) => dragIdFor(a, key)}
+                    collapsed={s.name === DONE_STAGE && !showDone}
+                    activeActivityId={activeActivityId}
+                    onCardClick={onView}
+                    className="min-h-[64px] bg-[var(--color-muted)]"
+                  />
+                ))}
               </div>
             </section>
           );
