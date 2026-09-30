@@ -32,7 +32,10 @@ import { DONE_STAGE, isRecentlyDone, reassignedIds } from "@/lib/team";
 
 type Props = {
   activities: ActivityView[];
+  /** Todas as etapas (menu "Mover para"). */
   stages: Stage[];
+  /** As que aparecem: o filtro de status pode esconder algumas. */
+  visibleStages: Stage[];
   journeys: Journey[];
   assignees: Assignee[];
   group: GroupBy;
@@ -217,6 +220,7 @@ function GroupDrop({
 export function ListView({
   activities,
   stages,
+  visibleStages,
   journeys,
   assignees,
   group,
@@ -267,8 +271,8 @@ export function ListView({
   }, [activities, previewGroupKey, group, stages]);
 
   const groups = React.useMemo(
-    () => groupActivities(effective, group, stages, journeys, assignees),
-    [effective, group, stages, journeys, assignees],
+    () => groupActivities(effective, group, visibleStages, journeys, assignees),
+    [effective, group, visibleStages, journeys, assignees],
   );
 
   const [activeId, setActiveId] = React.useState<string | null>(null);

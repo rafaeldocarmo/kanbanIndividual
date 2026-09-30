@@ -1,10 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown";
 import { cn } from "@/lib/utils";
 import type { GroupBy, Lanes, Scope, ViewMode } from "@/lib/types";
+import type { Stage } from "@/db/schema";
 
 type Props = {
   search: string;
@@ -12,6 +21,10 @@ type Props = {
   scope: Scope;
   onScopeChange: (s: Scope) => void;
   canFilterMine: boolean;
+  stages: Stage[];
+  /** Etapas escondidas (ficam fora da lista, do quadro e da busca). */
+  hiddenStages: string[];
+  onHiddenStagesChange: (ids: string[]) => void;
   group: GroupBy;
   onGroupChange: (g: GroupBy) => void;
   lanes: Lanes;
@@ -57,6 +70,9 @@ export function Toolbar({
   scope,
   onScopeChange,
   canFilterMine,
+  stages,
+  hiddenStages,
+  onHiddenStagesChange,
   group,
   onGroupChange,
   lanes,
@@ -114,6 +130,56 @@ export function Toolbar({
           Da equipe
         </SegButton>
       </div>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            title="Mostrar só algumas etapas"
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition hover:bg-[var(--color-muted)]",
+              hiddenStages.length > 0
+                ? "text-[var(--color-foreground)]"
+                : "text-[var(--color-muted-foreground)]",
+            )}
+          >
+            Status
+            {hiddenStages.length > 0 && (
+              <span className="tabular-nums">
+                {stages.length - hiddenStages.length}/{stages.length}
+              </span>
+            )}
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[12rem]">
+          {stages.map((s) => (
+            <DropdownMenuCheckboxItem
+              key={s.id}
+              checked={!hiddenStages.includes(s.id)}
+              // Sem fechar: dá para ligar/desligar várias de uma vez.
+              onSelect={(e) => e.preventDefault()}
+              onCheckedChange={(on) =>
+                onHiddenStagesChange(
+                  on
+                    ? hiddenStages.filter((id) => id !== s.id)
+                    : [...hiddenStages, s.id],
+                )
+              }
+            >
+              {s.name}
+            </DropdownMenuCheckboxItem>
+          ))}
+          {hiddenStages.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => onHiddenStagesChange([])}>
+                Mostrar todas
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <div className="ml-auto flex items-center gap-4">
         {view === "board" ? (

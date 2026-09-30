@@ -193,10 +193,11 @@ export function ensureDefaults(): Promise<void> {
     if (hasAssignees.length === 0) {
       inserts.push(
         db.insert(assignees).values([
-          { name: "Rafael", initials: "RA" },
-          { name: "Ricardo", initials: "RI" },
-          { name: "Vinicius", initials: "VI" },
-          { name: "Outros", initials: "OU" },
+          { name: "Rafael", initials: "RA", hue: 255 },
+          { name: "Ricardo", initials: "RI", hue: 150 },
+          { name: "Sergio", initials: "SE", hue: 345 },
+          { name: "Vinicius", initials: "VI", hue: 310 },
+          { name: "Outros", initials: "OU", hue: 205 },
         ]),
       );
     }

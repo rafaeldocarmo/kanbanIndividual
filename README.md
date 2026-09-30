@@ -1,6 +1,6 @@
 # Kanban Individual
 
-Aplicação web simples e rápida para gerenciamento de atividades operacionais de uma equipe pequena (Rafael, Ricardo, Vinicius e Outros). Minimalista de propósito: sem sprints, pontos, horas, aprovações, papéis ou relatórios.
+Aplicação web simples e rápida para gerenciamento de atividades operacionais de uma equipe pequena (Rafael, Ricardo, Sergio, Vinicius e "Outros"). Minimalista de propósito: sem sprints, pontos, horas, aprovações, papéis ou relatórios.
 
 ## Stack
 
@@ -33,6 +33,7 @@ O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e 
 - **Você é** (topo): quem está usando o app. Sem login — é um cookie (`kb_me`) que define o filtro "Minhas" e assina as alterações
 - **Um ou mais responsáveis** por atividade, todos com o mesmo peso: o item aparece no grupo/raia de cada um e conta na carga de cada um
 - **Minhas / Da equipe** (barra de ferramentas): "Minhas" = você é um dos responsáveis **ou** o item está bloqueado esperando por você
+- **Filtro de status** (barra de ferramentas): esconde as etapas que você não quer ver — some com os itens delas e com a coluna no Quadro. Útil ao agrupar por Jornada ou Responsável, onde os concluídos lotariam cada grupo. Fica na URL (`?hide=`)
 - **Atribuir em 1 clique**: os avatares na linha/cartão abrem o menu da equipe — clicar no nome troca (handoff: fica só essa pessoa); **+** soma alguém, **✓** remove
 - **Bloqueado por**: alguém da equipe ou um externo em texto livre (ex.: "Fornecedor (externo)"). Selo "bloq. <nome>" na linha e borda vermelha no cartão; pelo menu "…" da linha, pelo selo ou pelo detalhe do item
 - **Faixa de carga**: itens em "Em Andamento" por pessoa, com mini-barra; âmbar acima de 3
@@ -40,7 +41,7 @@ O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e 
 - **Concluído nas últimas 24h**: grupo aberto na Lista (por status) com o que acabou de ser concluído ("concluído há 3 h"); o resto de "Concluído" segue recolhido. Nas raias, a coluna recolhida mostra só esses. Usa `completed_at`, carimbado ao entrar em "Concluído" e limpo ao sair
 - **Raias por pessoa** no Quadro: arrastar na horizontal muda a etapa; na vertical, a pessoa da raia de origem sai e a de destino entra (vale também para a Lista agrupada por Responsável)
 - **Comentários** no detalhe do item (autor, texto, data), assinados por quem está no "Você é"; cada um apaga só os próprios
-- **Disciplina visual**: cor só por exceção — âmbar para itens parados e carga acima do limite, vermelho para bloqueio e parados há 10+ dias. Cada pessoa tem um matiz (mesma luminosidade/croma, OKLCH) usado **só** no avatar. A prioridade é a exceção assumida: alta vermelha, média amarela, baixa azul
+- **Disciplina visual**: cor só por exceção — âmbar para itens parados e carga acima do limite, vermelho para bloqueio e parados há 10+ dias. Cada pessoa tem um matiz fixo em `assignees.hue` (mesma luminosidade/croma, OKLCH) usado **só** no avatar — entrar ou sair alguém da equipe não muda a cor de quem já estava. A prioridade é a exceção assumida: alta vermelha, média amarela, baixa azul
 
 ### Geral
 
@@ -65,7 +66,7 @@ O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e 
 ```
 stages     (id, name, color, position)          ← etapas configuráveis
 journeys   (id, name, color)
-assignees  (id, name, initials, color)
+assignees  (id, name, initials, color, hue?)   ← hue: matiz do avatar
 activities (id, name, description, due_date,
             stage_id, journey_id,
             priority, position numeric,

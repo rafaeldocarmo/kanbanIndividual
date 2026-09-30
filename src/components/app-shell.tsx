@@ -34,7 +34,12 @@ import type {
   Scope,
   ViewMode,
 } from "@/lib/types";
-import { useQueryState, parseAsStringEnum } from "nuqs";
+import {
+  useQueryState,
+  parseAsArrayOf,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs";
 
 const GROUPS: GroupBy[] = ["status", "journey", "assignee"];
 const VIEWS: ViewMode[] = ["list", "board"];
@@ -184,6 +189,7 @@ type Props = {
   initialGroup?: GroupBy;
   initialScope?: Scope;
   initialLanes?: Lanes;
+  initialHidden?: string[];
 };
 
 export function AppShell({
@@ -192,6 +198,7 @@ export function AppShell({
   initialGroup,
   initialScope,
   initialLanes,
+  initialHidden,
 }: Props) {
   const { me, member } = useTeam();
   const [search, setSearch] = React.useState("");
@@ -210,6 +217,16 @@ export function AppShell({
   const [lanes, setLanes] = useQueryState(
     "lanes",
     parseAsStringEnum(LANES).withDefault(initialLanes ?? "none"),
+  );
+  // Etapas escondidas: some com os itens delas (e com a coluna no Quadro).
+  const [hiddenStages, setHiddenStages] = useQueryState(
+    "hide",
+    parseAsArrayOf(parseAsString, ",").withDefault(initialHidden ?? []),
+  );
+  const hidden = React.useMemo(() => new Set(hiddenStages), [hiddenStages]);
+  const visibleStages = React.useMemo(
+    () => data.stages.filter((s) => !hidden.has(s.id)),
+    [data.stages, hidden],
   );
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -275,8 +292,9 @@ export function AppShell({
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q && !mineOnly) return optimisticActivities;
+    if (!q && !mineOnly && hidden.size === 0) return optimisticActivities;
     return optimisticActivities.filter((a) => {
+      if (hidden.has(a.stageId)) return false;
       if (mineOnly && me && !isMine(a, me)) return false;
       if (!q) return true;
       return (
@@ -289,7 +307,7 @@ export function AppShell({
         a.blockedBy?.toLowerCase().includes(q)
       );
     });
-  }, [optimisticActivities, search, mineOnly, me, member]);
+  }, [optimisticActivities, search, mineOnly, me, member, hidden]);
 
   return (
     <ActivitiesContext.Provider value={ctxValue}>
@@ -302,6 +320,9 @@ export function AppShell({
             scope={mineOnly ? "mine" : "team"}
             onScopeChange={setScope}
             canFilterMine={!!me}
+            stages={data.stages}
+            hiddenStages={hiddenStages}
+            onHiddenStagesChange={setHiddenStages}
             group={group}
             onGroupChange={setGroup}
             lanes={lanes}
@@ -319,7 +340,7 @@ export function AppShell({
             {view === "board" ? (
               <BoardView
                 activities={filtered}
-                stages={data.stages}
+                stages={visibleStages}
                 lanes={lanes}
                 onView={openView}
               />
@@ -327,6 +348,7 @@ export function AppShell({
               <ListView
                 activities={filtered}
                 stages={data.stages}
+                visibleStages={visibleStages}
                 journeys={data.journeys}
                 assignees={data.assignees}
                 group={group}

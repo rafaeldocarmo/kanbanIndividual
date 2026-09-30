@@ -35,8 +35,9 @@ export function TeamProvider({
 }) {
   const [meId, setMeId] = React.useState(initialMeId);
 
+  // O matiz vem do banco; a posição na lista é só reserva (equipe nova).
   const members = React.useMemo(
-    () => team.map((a, i) => ({ ...a, hue: avatarHue(i) })),
+    () => team.map((a, i) => ({ ...a, hue: a.hue ?? avatarHue(i) })),
     [team],
   );
   const byId = React.useMemo(

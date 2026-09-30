@@ -22,6 +22,7 @@ type PageProps = {
     group?: string;
     scope?: string;
     lanes?: string;
+    hide?: string;
   }>;
 };
 
@@ -42,6 +43,9 @@ export default async function Page({ searchParams }: PageProps) {
     sp.group === "journey" || sp.group === "assignee" ? sp.group : "status";
   const initialScope: Scope = sp.scope === "mine" ? "mine" : "team";
   const initialLanes: Lanes = sp.lanes === "person" ? "person" : "none";
+  const initialHidden = (sp.hide?.split(",") ?? []).filter((id) =>
+    stages.some((s) => s.id === id),
+  );
 
   return (
     <AppShell
@@ -50,6 +54,7 @@ export default async function Page({ searchParams }: PageProps) {
       initialGroup={initialGroup}
       initialScope={initialScope}
       initialLanes={initialLanes}
+      initialHidden={initialHidden}
     />
   );
 }

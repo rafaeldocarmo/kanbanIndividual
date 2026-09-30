@@ -46,6 +46,9 @@ export const assignees = pgTable("assignees", {
   name: text("name").notNull().unique(),
   initials: text("initials").notNull(),
   color: text("color").notNull().default("#cbd5e1"),
+  /** Matiz OKLCH do avatar (ver `avatarHue`). Fixo por pessoa: entrar ou sair
+   *  alguém da equipe não muda a cor de quem já estava. */
+  hue: integer("hue"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
