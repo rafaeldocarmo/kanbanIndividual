@@ -8,6 +8,7 @@ import {
   journeys,
   boardCheckins,
   boardItems,
+  knowledge,
   links,
   notes,
   reminders,
@@ -31,6 +32,7 @@ export const CACHE_TAGS = {
   links: "links",
   queries: "queries",
   board: "board",
+  knowledge: "knowledge",
 } as const;
 
 export type ActivityView = Awaited<ReturnType<typeof getActivities>>[number];
@@ -210,6 +212,13 @@ export function ensureDefaults(): Promise<void> {
 
   return defaultsPromise;
 }
+
+// Mais recém-atualizados primeiro: o que a equipe mexeu por último fica à vista.
+export const getKnowledge = unstable_cache(
+  async () => db.select().from(knowledge).orderBy(desc(knowledge.updatedAt)),
+  ["knowledge"],
+  { tags: [CACHE_TAGS.knowledge] },
+);
 
 export const getNotes = unstable_cache(
   async () => db.select().from(notes).orderBy(desc(notes.createdAt)),

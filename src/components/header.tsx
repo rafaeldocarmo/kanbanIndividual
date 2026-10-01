@@ -3,7 +3,15 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, StickyNote, Database, Target, Sun, Moon } from "lucide-react";
+import {
+  LayoutGrid,
+  StickyNote,
+  Database,
+  Target,
+  BookOpen,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { IdentityPicker } from "@/components/team/identity-picker";
@@ -20,6 +28,7 @@ const NAV: NavItem[] = [
   { href: "/notas", label: "Notas", icon: StickyNote },
   { href: "/queries", label: "Queries", icon: Database },
   { href: "/foco", label: "Foco", icon: Target },
+  { href: "/conhecimento", label: "Conhecimento", icon: BookOpen },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -61,7 +70,8 @@ export function Header() {
                 )}
               >
                 <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{label}</span>
+                {/* Com 5 abas, os rótulos só cabem em telas largas. */}
+                <span className="hidden lg:inline">{label}</span>
               </Link>
             );
           })}

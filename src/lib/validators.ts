@@ -68,6 +68,16 @@ export const stageInput = z.object({
     .optional(),
 });
 
+// --- Banco de Conhecimento ---
+
+export const knowledgeInput = z.object({
+  title: z.string().trim().min(1, "Título obrigatório").max(200),
+  content: z.string().trim().min(1, "Escreva o conteúdo").max(20000),
+  journeyId: z.string().uuid().nullable(),
+  kind: z.enum(["procedimento", "erro", "regra", "contato"]),
+});
+export type KnowledgeInput = z.infer<typeof knowledgeInput>;
+
 // --- Notas & Lembretes ---
 
 export const noteInput = z.object({

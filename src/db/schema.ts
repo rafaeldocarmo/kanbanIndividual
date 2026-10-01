@@ -183,6 +183,51 @@ export const activityComments = pgTable(
   }),
 );
 
+// --- Banco de Conhecimento (espaço da equipe) ---
+
+export const knowledgeKindEnum = pgEnum("knowledge_kind", [
+  "procedimento",
+  "erro",
+  "regra",
+  "contato",
+]);
+
+export const knowledge = pgTable(
+  "knowledge",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    /** Null = conhecimento geral, que não é de uma jornada só. */
+    journeyId: uuid("journey_id").references(() => journeys.id, {
+      onDelete: "set null",
+    }),
+    kind: knowledgeKindEnum("kind").notNull().default("procedimento"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdById: uuid("created_by").references(() => assignees.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedById: uuid("updated_by").references(() => assignees.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => ({
+    journeyIdx: index("knowledge_journey_idx").on(t.journeyId),
+  }),
+);
+
+export const knowledgeRelations = relations(knowledge, ({ one }) => ({
+  journey: one(journeys, {
+    fields: [knowledge.journeyId],
+    references: [journeys.id],
+  }),
+}));
+
 // --- Notas & Lembretes (espaço pessoal) ---
 
 export const notes = pgTable(
@@ -398,6 +443,8 @@ export type Activity = typeof activities.$inferSelect;
 export type ActivityStatusUpdate = typeof activityStatusUpdates.$inferSelect;
 export type ActivityComment = typeof activityComments.$inferSelect;
 export type Priority = (typeof priorityEnum.enumValues)[number];
+export type Knowledge = typeof knowledge.$inferSelect;
+export type KnowledgeKind = (typeof knowledgeKindEnum.enumValues)[number];
 export type Note = typeof notes.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;
 export type LinkItem = typeof links.$inferSelect;

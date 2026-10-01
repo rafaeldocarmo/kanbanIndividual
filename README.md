@@ -57,6 +57,13 @@ O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e 
 - **Atalhos**: `N` nova atividade, `/` focar busca, `Esc` fechar modal
 - Optimistic UI no DnD com rollback em falha
 - **Notas & Lembretes** (`/notas`): espaço pessoal com notas, lembretes (data + concluído) e links — CRUD com optimistic UI, sem toasts de sucesso
+- **Banco de Conhecimento** (`/conhecimento`): espaço da equipe para o que se
+  aprende das jornadas. Cada item tem título, texto com formatação básica
+  (markdown mínimo renderizado sem `dangerouslySetInnerHTML`), jornada e tipo
+  (Procedimento, Erro conhecido, Regra/Combinado, Contato). Lista agrupada por
+  jornada à esquerda e leitura/edição à direita; busca, filtros de jornada e
+  tipo, e o item aberto vai para a URL (link compartilhável). Qualquer um
+  edita; o app assina quem criou e quem atualizou, pelo "Você é"
 - **Queries** (`/queries`): salvar queries de banco com título, copiar com um clique, buscar e **reordenar por drag-and-drop** (fractional indexing) — CRUD com optimistic UI
 
 ## Arquitetura
@@ -79,6 +86,8 @@ notes        (id, title?, content, created_at, updated_at)
 reminders    (id, content, due_date?, done, created_at, updated_at)
 links        (id, title, url, category?, created_at, updated_at)
 saved_queries(id, title, query, position, created_at, updated_at)
+knowledge    (id, title, content, journey_id?, kind,
+              created_at, created_by?, updated_at, updated_by?)
 ```
 
 - `stages` em tabela própria → novas etapas sem migration
