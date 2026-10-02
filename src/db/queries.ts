@@ -6,12 +6,7 @@ import {
   activityStatusUpdates,
   assignees,
   journeys,
-  boardCheckins,
-  boardItems,
   knowledge,
-  links,
-  notes,
-  reminders,
   savedQueries,
   stages,
 } from "./schema";
@@ -27,16 +22,11 @@ import type { CommentEntry } from "@/lib/types";
 export const CACHE_TAGS = {
   meta: "meta",
   activities: "activities",
-  notes: "notes",
-  reminders: "reminders",
-  links: "links",
   queries: "queries",
-  board: "board",
   knowledge: "knowledge",
 } as const;
 
 export type ActivityView = Awaited<ReturnType<typeof getActivities>>[number];
-export type BoardItemView = Awaited<ReturnType<typeof getBoardItems>>[number];
 
 export const getStages = unstable_cache(
   async () => db.select().from(stages).orderBy(asc(stages.position)),
@@ -220,58 +210,11 @@ export const getKnowledge = unstable_cache(
   { tags: [CACHE_TAGS.knowledge] },
 );
 
-export const getNotes = unstable_cache(
-  async () => db.select().from(notes).orderBy(desc(notes.createdAt)),
-  ["notes"],
-  { tags: [CACHE_TAGS.notes] },
-);
-
-export const getReminders = unstable_cache(
-  async () =>
-    // Pendentes antes de concluídos; dentro de cada grupo, por data (nulls por último).
-    db
-      .select()
-      .from(reminders)
-      .orderBy(asc(reminders.done), asc(reminders.dueDate), asc(reminders.createdAt)),
-  ["reminders"],
-  { tags: [CACHE_TAGS.reminders] },
-);
-
-export const getLinks = unstable_cache(
-  async () => db.select().from(links).orderBy(desc(links.createdAt)),
-  ["links"],
-  { tags: [CACHE_TAGS.links] },
-);
-
 export const getSavedQueries = unstable_cache(
   async () => db.select().from(savedQueries).orderBy(asc(savedQueries.position)),
   ["saved-queries"],
   { tags: [CACHE_TAGS.queries] },
 );
-
-export const getBoardItems = unstable_cache(_getBoardItems, ["board-items"], {
-  tags: [CACHE_TAGS.board],
-});
-
-async function _getBoardItems() {
-  const [items, checkins] = await Promise.all([
-    db.select().from(boardItems).orderBy(asc(boardItems.createdAt)),
-    db.select().from(boardCheckins),
-  ]);
-
-  const daysByItem = new Map<string, string[]>();
-  for (const c of checkins) {
-    const arr = daysByItem.get(c.itemId);
-    // `day` é coluna date → string "YYYY-MM-DD".
-    if (arr) arr.push(c.day);
-    else daysByItem.set(c.itemId, [c.day]);
-  }
-
-  return items.map((it) => ({
-    ...it,
-    checkins: daysByItem.get(it.id) ?? [],
-  }));
-}
 
 // Novas queries entram no topo (menor posição). Reordenação usa fractional indexing.
 export async function topPositionForQuery(): Promise<number> {

@@ -228,6 +228,12 @@ export const knowledgeRelations = relations(knowledge, ({ one }) => ({
   }),
 }));
 
+// --- Legado: Notas & Lembretes e "Foco do dia" ---
+//
+// As telas saíram do app em 02/10/2026, mas as tabelas ficam: os dados ainda
+// estão aqui (notas, links e itens do mural) e removê-las do schema faria um
+// `db:push` futuro apagar tudo. Nenhuma leitura do app usa estas tabelas.
+
 // --- Notas & Lembretes (espaço pessoal) ---
 
 export const notes = pgTable(

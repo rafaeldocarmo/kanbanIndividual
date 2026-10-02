@@ -78,51 +78,8 @@ export const knowledgeInput = z.object({
 });
 export type KnowledgeInput = z.infer<typeof knowledgeInput>;
 
-// --- Notas & Lembretes ---
-
-export const noteInput = z.object({
-  title: z.string().trim().max(200).optional().nullable(),
-  content: z.string().trim().min(1, "Escreva algo").max(5000),
-});
-export type NoteInput = z.infer<typeof noteInput>;
-
-const dateString = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida")
-  .optional()
-  .nullable();
-
-export const reminderInput = z.object({
-  content: z.string().trim().min(1, "Escreva um lembrete").max(300),
-  dueDate: dateString,
-  done: z.boolean().optional(),
-});
-export type ReminderInput = z.infer<typeof reminderInput>;
-
-export const linkInput = z.object({
-  title: z.string().trim().min(1, "Título obrigatório").max(200),
-  url: z.string().trim().min(1, "URL obrigatória").max(2048),
-  category: z.string().trim().max(80).optional().nullable(),
-});
-export type LinkInput = z.infer<typeof linkInput>;
-
 export const savedQueryInput = z.object({
   title: z.string().trim().min(1, "Título obrigatório").max(200),
   query: z.string().trim().min(1, "Escreva a query").max(20000),
 });
 export type SavedQueryInput = z.infer<typeof savedQueryInput>;
-
-// --- Mural "Foco do dia" ---
-
-export const boardItemInput = z.object({
-  title: z.string().trim().min(1, "Título obrigatório").max(200),
-  detail: z.string().trim().max(300).optional().nullable(),
-  status: z.enum(["risco", "atencao", "em_dia"]).default("em_dia"),
-});
-export type BoardItemInput = z.infer<typeof boardItemInput>;
-
-export const checkinInput = z.object({
-  itemId: z.string().uuid(),
-  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
-  checked: z.boolean(),
-});

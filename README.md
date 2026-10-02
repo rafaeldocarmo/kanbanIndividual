@@ -56,7 +56,6 @@ O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e 
 - Filtros e visão persistem na URL (shareable)
 - **Atalhos**: `N` nova atividade, `/` focar busca, `Esc` fechar modal
 - Optimistic UI no DnD com rollback em falha
-- **Notas & Lembretes** (`/notas`): espaço pessoal com notas, lembretes (data + concluído) e links — CRUD com optimistic UI, sem toasts de sucesso
 - **Banco de Conhecimento** (`/conhecimento`): espaço da equipe para o que se
   aprende das jornadas. Cada item tem título, texto com formatação básica
   (markdown mínimo renderizado sem `dangerouslySetInnerHTML`), jornada e tipo
@@ -82,9 +81,6 @@ activities (id, name, description, due_date,
 activity_assignees (activity_id, assignee_id)   ← um ou mais responsáveis
 activity_comments  (id, activity_id, author_id?, content, created_at)
 
-notes        (id, title?, content, created_at, updated_at)
-reminders    (id, content, due_date?, done, created_at, updated_at)
-links        (id, title, url, category?, created_at, updated_at)
 saved_queries(id, title, query, position, created_at, updated_at)
 knowledge    (id, title, content, journey_id?, kind,
               created_at, created_by?, updated_at, updated_by?)
@@ -94,6 +90,7 @@ knowledge    (id, title, content, journey_id?, kind,
 - `activities.position` usa **fractional indexing** (numeric) — reordenar sem reescrever vizinhos. Inserções entre A e B usam `(posA + posB) / 2`.
 - `journey` e `assignee` em tabelas (não enum) → editáveis pelo usuário no futuro
 - `activities.assignee_id` é legado (congelado desde a migração para `activity_assignees`); segue no schema como `@deprecated` só para poder desfazer
+- As telas **Notas & Lembretes** e **Foco do dia** saíram em 02/10/2026. As tabelas (`notes`, `reminders`, `links`, `board_items`, `board_checkins`) continuam no schema com os dados: tirá-las de lá faria um `db:push` futuro apagar tudo
 
 ### Camadas
 
@@ -101,15 +98,15 @@ knowledge    (id, title, content, journey_id?, kind,
 src/
   app/
     page.tsx               -- server: carrega tudo via Promise.all e passa para o shell
-    notas/page.tsx         -- server: carrega notas/lembretes/links e passa para o NotesShell
+    conhecimento/page.tsx  -- server: carrega conhecimento + jornadas para o KnowledgeShell
     actions/
       activities.ts        -- create/update/delete/duplicate/move (com zod + revalidate)
       meta.ts              -- create stage/journey/assignee
-      notes.ts             -- CRUD de notas, lembretes e links (zod + revalidate)
+      knowledge.ts         -- CRUD do conhecimento (zod + revalidate)
     layout.tsx, globals.css
   components/
     app-shell.tsx          -- estado client (busca/view/group/dialog)
-    notes/                 -- NotesShell (useOptimistic), composer, cards e linhas
+    knowledge/             -- KnowledgeShell (useOptimistic), lista, painel e editor
     toolbar.tsx            -- busca, agrupar, alternar visão, novo
     list-view.tsx          -- agrupamento dinâmico
     board-view.tsx         -- DnD com @dnd-kit
