@@ -74,7 +74,6 @@ const omStatus = z.enum(["analise", "enderecado", "corrigido"]);
 
 export const omErrorInput = z.object({
   symptom: z.string().trim().min(1, "Descreva o erro").max(300),
-  workaround: z.string().trim().max(4000).nullable(),
   detail: z.string().trim().max(20000).nullable(),
   journeyId: z.string().uuid().nullable(),
   status: omStatus,

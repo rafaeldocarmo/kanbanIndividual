@@ -68,15 +68,6 @@ export function OmErrorPanel({
         })}
       </div>
 
-      {error.workaround && (
-        <div className="mt-4 rounded-md bg-[color-mix(in_srgb,var(--color-warning)_10%,transparent)] p-3">
-          <div className="mb-1 text-[11px] font-medium text-[var(--color-warning)]">
-            Contorno enquanto não corrige
-          </div>
-          <Markdown text={error.workaround} />
-        </div>
-      )}
-
       {error.detail && (
         <div className="mt-4">
           <Markdown text={error.detail} />

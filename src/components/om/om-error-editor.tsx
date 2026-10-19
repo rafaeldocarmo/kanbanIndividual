@@ -19,7 +19,6 @@ const SEM_JORNADA = "__sem__";
 
 export type OmErrorValues = {
   symptom: string;
-  workaround: string | null;
   detail: string | null;
   journeyId: string | null;
   status: OmErrorStatus;
@@ -43,7 +42,6 @@ export function OmErrorEditor({
 }) {
   const { me, team } = useTeam();
   const [symptom, setSymptom] = React.useState(error.symptom);
-  const [workaround, setWorkaround] = React.useState(error.workaround ?? "");
   const [detail, setDetail] = React.useState(error.detail ?? "");
   const [journeyId, setJourneyId] = React.useState(error.journeyId);
   const [status, setStatus] = React.useState<OmErrorStatus>(error.status);
@@ -72,7 +70,6 @@ export function OmErrorEditor({
     }
     onSave({
       symptom: s,
-      workaround: workaround.trim() || null,
       detail: detail.trim() || null,
       journeyId,
       status,
@@ -153,19 +150,6 @@ export function OmErrorEditor({
             />
           </label>
         )}
-      </div>
-
-      <div className="grid gap-1.5">
-        <label className="text-xs font-medium text-[var(--color-muted-foreground)]">
-          Contorno — o que fazer enquanto não corrige
-        </label>
-        <Textarea
-          value={workaround}
-          onChange={(e) => setWorkaround(e.target.value)}
-          placeholder="Ex.: reprocessar pelo script X e confirmar no OM"
-          className="min-h-[90px]"
-          maxLength={4000}
-        />
       </div>
 
       <div className="grid gap-1.5">

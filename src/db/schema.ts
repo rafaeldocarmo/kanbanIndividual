@@ -242,8 +242,6 @@ export const omErrors = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     /** Como o erro aparece — é o título da linha. */
     symptom: text("symptom").notNull(),
-    /** O que fazer enquanto não corrige. */
-    workaround: text("workaround"),
     /** Causa, contexto, o que já se investigou. */
     detail: text("detail"),
     journeyId: uuid("journey_id").references(() => journeys.id, {

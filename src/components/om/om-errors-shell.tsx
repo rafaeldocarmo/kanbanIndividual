@@ -124,7 +124,7 @@ export function OmErrorsShell({
       }
       if (handler !== ALL && e.handledBy !== handler) return false;
       if (!q) return true;
-      return [e.symptom, e.workaround, e.detail, e.handledBy].some((t) =>
+      return [e.symptom, e.detail, e.handledBy].some((t) =>
         t?.toLowerCase().includes(q),
       );
     });
@@ -146,7 +146,6 @@ export function OmErrorsShell({
     const item: OmError = {
       id,
       symptom,
-      workaround: null,
       detail: null,
       journeyId: null,
       status: "analise",
@@ -325,7 +324,7 @@ export function OmErrorsShell({
               />
             ) : (
               <p className="hidden rounded-xl border border-dashed border-[var(--color-border)] px-4 py-16 text-center text-sm text-[var(--color-muted-foreground)] lg:block">
-                Escolha um erro à esquerda para ver o contorno.
+                Escolha um erro à esquerda para ver os detalhes.
               </p>
             )}
           </div>

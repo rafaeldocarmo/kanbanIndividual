@@ -65,7 +65,7 @@ O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e 
   edita; o app assina quem criou e quem atualizou, pelo "Você é"
 - **Erros OM** (`/conhecimento/erros`): catálogo dos erros do OM, dentro da
   aba Conhecimento. Uma linha por erro (não por ocorrência), com sintoma,
-  contorno em destaque, causa, jornada e quem trata (equipe ou externo).
+  causa e contexto, jornada e quem trata (equipe ou externo).
   Status **Em análise → Endereçado → Corrigido** numa trilha de um clique;
   marcar como corrigido carimba a data da correção e voltar atrás a limpa.
   Lista agrupada por status com "parado há X dias" (mesma régua do Kanban),
@@ -91,7 +91,7 @@ activity_comments  (id, activity_id, author_id?, content, created_at)
 saved_queries(id, title, query, position, created_at, updated_at)
 knowledge    (id, title, content, journey_id?, kind,
               created_at, created_by?, updated_at, updated_by?)
-om_errors    (id, symptom, workaround?, detail?, journey_id?, status,
+om_errors    (id, symptom, detail?, journey_id?, status,
               handled_by?, fixed_at?,
               created_at, created_by?, updated_at, updated_by?)
 ```
