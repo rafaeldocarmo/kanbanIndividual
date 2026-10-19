@@ -68,6 +68,36 @@ export const stageInput = z.object({
     .optional(),
 });
 
+// --- Erros OM ---
+
+const omStatus = z.enum(["analise", "enderecado", "corrigido"]);
+
+export const omErrorInput = z.object({
+  symptom: z.string().trim().min(1, "Descreva o erro").max(300),
+  workaround: z.string().trim().max(4000).nullable(),
+  detail: z.string().trim().max(20000).nullable(),
+  journeyId: z.string().uuid().nullable(),
+  status: omStatus,
+  handledBy: z
+    .string()
+    .trim()
+    .max(80)
+    .nullable()
+    .transform((v) => v || null),
+  // "YYYY-MM-DD" ou vazio.
+  fixedAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida")
+    .nullable()
+    .or(z.literal("").transform(() => null)),
+});
+export type OmErrorInput = z.infer<typeof omErrorInput>;
+
+export const omErrorStatusInput = z.object({
+  id: z.string().uuid(),
+  status: omStatus,
+});
+
 // --- Banco de Conhecimento ---
 
 export const knowledgeInput = z.object({

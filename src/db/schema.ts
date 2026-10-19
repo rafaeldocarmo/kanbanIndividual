@@ -228,6 +228,57 @@ export const knowledgeRelations = relations(knowledge, ({ one }) => ({
   }),
 }));
 
+// --- Erros OM (catálogo, dentro da aba Conhecimento) ---
+
+export const omErrorStatusEnum = pgEnum("om_error_status", [
+  "analise",
+  "enderecado",
+  "corrigido",
+]);
+
+export const omErrors = pgTable(
+  "om_errors",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** Como o erro aparece — é o título da linha. */
+    symptom: text("symptom").notNull(),
+    /** O que fazer enquanto não corrige. */
+    workaround: text("workaround"),
+    /** Causa, contexto, o que já se investigou. */
+    detail: text("detail"),
+    journeyId: uuid("journey_id").references(() => journeys.id, {
+      onDelete: "set null",
+    }),
+    status: omErrorStatusEnum("status").notNull().default("analise"),
+    /** Quem trata: nome de alguém da equipe ou externo (ex.: "DXC"). */
+    handledBy: text("handled_by"),
+    /** Preenchida ao marcar como corrigido; limpa se voltar atrás. */
+    fixedAt: date("fixed_at"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdById: uuid("created_by").references(() => assignees.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedById: uuid("updated_by").references(() => assignees.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => ({
+    statusIdx: index("om_errors_status_idx").on(t.status),
+  }),
+);
+
+export const omErrorsRelations = relations(omErrors, ({ one }) => ({
+  journey: one(journeys, {
+    fields: [omErrors.journeyId],
+    references: [journeys.id],
+  }),
+}));
+
 // --- Legado: Notas & Lembretes e "Foco do dia" ---
 //
 // As telas saíram do app em 02/10/2026, mas as tabelas ficam: os dados ainda
@@ -450,6 +501,8 @@ export type ActivityStatusUpdate = typeof activityStatusUpdates.$inferSelect;
 export type ActivityComment = typeof activityComments.$inferSelect;
 export type Priority = (typeof priorityEnum.enumValues)[number];
 export type Knowledge = typeof knowledge.$inferSelect;
+export type OmError = typeof omErrors.$inferSelect;
+export type OmErrorStatus = (typeof omErrorStatusEnum.enumValues)[number];
 export type KnowledgeKind = (typeof knowledgeKindEnum.enumValues)[number];
 export type Note = typeof notes.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;

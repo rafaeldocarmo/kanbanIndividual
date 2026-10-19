@@ -3,6 +3,8 @@ import type {
   Journey,
   Knowledge,
   KnowledgeKind,
+  OmError,
+  OmErrorStatus,
   Stage,
 } from "@/db/schema";
 
@@ -54,6 +56,21 @@ export const kindLabel = (kind: KnowledgeKind) =>
 export type KnowledgeBootstrap = {
   journeys: Journey[];
   items: Knowledge[];
+};
+
+/** Status dos Erros OM, na ordem do fluxo. */
+export const OM_ERROR_STATUSES: { id: OmErrorStatus; label: string }[] = [
+  { id: "analise", label: "Em análise" },
+  { id: "enderecado", label: "Endereçado" },
+  { id: "corrigido", label: "Corrigido" },
+];
+
+export const omStatusLabel = (status: OmErrorStatus) =>
+  OM_ERROR_STATUSES.find((s) => s.id === status)?.label ?? status;
+
+export type OmErrorsBootstrap = {
+  journeys: Journey[];
+  items: OmError[];
 };
 
 export type GroupBy = "status" | "journey" | "assignee";

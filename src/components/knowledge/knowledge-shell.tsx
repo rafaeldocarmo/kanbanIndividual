@@ -33,8 +33,7 @@ const ALL = "all";
 const GERAL = "geral";
 
 type Mutation =
-  | { op: "upsert"; item: Knowledge }
-  | { op: "delete"; id: string };
+  { op: "upsert"; item: Knowledge } | { op: "delete"; id: string };
 
 function reducer(state: Knowledge[], action: Mutation): Knowledge[] {
   const next =
@@ -98,7 +97,10 @@ export function KnowledgeShell({
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const mutate = (action: Mutation, server: () => Promise<{ ok: boolean; error?: string }>) => {
+  const mutate = (
+    action: Mutation,
+    server: () => Promise<{ ok: boolean; error?: string }>,
+  ) => {
     startTransition(async () => {
       applyOptimistic(action);
       try {
@@ -186,120 +188,118 @@ export function KnowledgeShell({
   const hasPanel = editing !== null || !!selected;
 
   return (
-    <div className="min-h-full px-4 py-8 sm:px-6">
-      <div className="animate-fade-in mx-auto w-full max-w-[1200px]">
-        <header className="mb-5 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Banco de Conhecimento
-          </h1>
-          <Button onClick={startNew} className="ml-auto">
-            <Plus className="h-4 w-4" />
-            Novo
-          </Button>
-        </header>
+    <>
+      <header className="mb-5 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Banco de Conhecimento
+        </h1>
+        <Button onClick={startNew} className="ml-auto">
+          <Plus className="h-4 w-4" />
+          Novo
+        </Button>
+      </header>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[14rem] flex-1 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-            <Input
-              ref={searchRef}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar no conhecimento…"
-              className="pl-9"
-            />
-          </div>
-
-          <Select value={journey} onValueChange={setJourney}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Jornada" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Todas as jornadas</SelectItem>
-              {data.journeys.map((j) => (
-                <SelectItem key={j.id} value={j.id}>
-                  {j.name}
-                </SelectItem>
-              ))}
-              <SelectItem value={GERAL}>Geral</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={kind} onValueChange={setKind}>
-            <SelectTrigger className="w-[170px]">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Todos os tipos</SelectItem>
-              {KNOWLEDGE_KINDS.map((k) => (
-                <SelectItem key={k.id} value={k.id}>
-                  {k.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[14rem] flex-1 max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+          <Input
+            ref={searchRef}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar no conhecimento…"
+            className="pl-9"
+          />
         </div>
 
-        {/* O estado vazio dá lugar ao editor assim que alguém clica em "Novo". */}
-        {items.length === 0 && !editing ? (
-          <div className="rounded-xl border border-dashed border-[var(--color-border)] px-6 py-16 text-center">
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              Comece anotando o que você explicaria para alguém que entrou hoje.
-            </p>
-            <Button onClick={startNew} className="mt-4">
-              <Plus className="h-4 w-4" />
-              Novo conhecimento
-            </Button>
-          </div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:items-start">
-            <div className={cn(hasPanel && "hidden lg:block")}>
-              {groups.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-sm text-[var(--color-muted-foreground)]">
-                  {items.length === 0
-                    ? "Nada por aqui ainda."
-                    : "Nada encontrado com esse recorte."}
-                </p>
-              ) : (
-                <KnowledgeList
-                  groups={groups}
-                  selectedId={selected?.id ?? null}
-                  onSelect={(id) => {
-                    setSelectedId(id);
-                    setEditing(null);
-                  }}
-                />
-              )}
-            </div>
+        <Select value={journey} onValueChange={setJourney}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Jornada" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todas as jornadas</SelectItem>
+            {data.journeys.map((j) => (
+              <SelectItem key={j.id} value={j.id}>
+                {j.name}
+              </SelectItem>
+            ))}
+            <SelectItem value={GERAL}>Geral</SelectItem>
+          </SelectContent>
+        </Select>
 
-            <div className={cn(!hasPanel && "hidden lg:block")}>
-              {editing ? (
-                <KnowledgeEditor
-                  item={editing === "current" ? (selected ?? null) : null}
-                  journeys={data.journeys}
-                  defaultJourneyId={
-                    journey === ALL || journey === GERAL ? null : journey
-                  }
-                  onCancel={() => setEditing(null)}
-                  onSave={save}
-                />
-              ) : selected ? (
-                <KnowledgePanel
-                  item={selected}
-                  journeys={data.journeys}
-                  onEdit={() => (me ? setEditing("current") : startNew())}
-                  onDelete={remove}
-                  onBack={() => setSelectedId("")}
-                />
-              ) : (
-                <p className="hidden rounded-xl border border-dashed border-[var(--color-border)] px-4 py-16 text-center text-sm text-[var(--color-muted-foreground)] lg:block">
-                  Escolha um item à esquerda para ler.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        <Select value={kind} onValueChange={setKind}>
+          <SelectTrigger className="w-[170px]">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todos os tipos</SelectItem>
+            {KNOWLEDGE_KINDS.map((k) => (
+              <SelectItem key={k.id} value={k.id}>
+                {k.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-    </div>
+
+      {/* O estado vazio dá lugar ao editor assim que alguém clica em "Novo". */}
+      {items.length === 0 && !editing ? (
+        <div className="rounded-xl border border-dashed border-[var(--color-border)] px-6 py-16 text-center">
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            Comece anotando o que você explicaria para alguém que entrou hoje.
+          </p>
+          <Button onClick={startNew} className="mt-4">
+            <Plus className="h-4 w-4" />
+            Novo conhecimento
+          </Button>
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:items-start">
+          <div className={cn(hasPanel && "hidden lg:block")}>
+            {groups.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-sm text-[var(--color-muted-foreground)]">
+                {items.length === 0
+                  ? "Nada por aqui ainda."
+                  : "Nada encontrado com esse recorte."}
+              </p>
+            ) : (
+              <KnowledgeList
+                groups={groups}
+                selectedId={selected?.id ?? null}
+                onSelect={(id) => {
+                  setSelectedId(id);
+                  setEditing(null);
+                }}
+              />
+            )}
+          </div>
+
+          <div className={cn(!hasPanel && "hidden lg:block")}>
+            {editing ? (
+              <KnowledgeEditor
+                item={editing === "current" ? (selected ?? null) : null}
+                journeys={data.journeys}
+                defaultJourneyId={
+                  journey === ALL || journey === GERAL ? null : journey
+                }
+                onCancel={() => setEditing(null)}
+                onSave={save}
+              />
+            ) : selected ? (
+              <KnowledgePanel
+                item={selected}
+                journeys={data.journeys}
+                onEdit={() => (me ? setEditing("current") : startNew())}
+                onDelete={remove}
+                onBack={() => setSelectedId("")}
+              />
+            ) : (
+              <p className="hidden rounded-xl border border-dashed border-[var(--color-border)] px-4 py-16 text-center text-sm text-[var(--color-muted-foreground)] lg:block">
+                Escolha um item à esquerda para ler.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

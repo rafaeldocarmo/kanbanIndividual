@@ -26,6 +26,16 @@ export function avatarHue(teamIndex: number) {
 
 export type Staleness = { days: number; level: "warn" | "alert" };
 
+/** Dias sem mexer, com o limiar do Kanban: âmbar a partir de 5, vermelho de 10. */
+export function stalenessFrom(
+  updatedAt: Date | string,
+  now: number,
+): Staleness | null {
+  const days = Math.floor((now - new Date(updatedAt).getTime()) / DAY_MS);
+  if (days < STALE_WARN_DAYS) return null;
+  return { days, level: days >= STALE_ALERT_DAYS ? "alert" : "warn" };
+}
+
 /**
  * "Sem atualização há X dias": só a partir de 5 dias (âmbar) e 10 (vermelho).
  * Backlog e Concluído ficam de fora — parados por definição.
@@ -35,9 +45,7 @@ export function staleness(
   now: number,
 ): Staleness | null {
   if (a.stageName === BACKLOG_STAGE || a.stageName === DONE_STAGE) return null;
-  const days = Math.floor((now - new Date(a.updatedAt).getTime()) / DAY_MS);
-  if (days < STALE_WARN_DAYS) return null;
-  return { days, level: days >= STALE_ALERT_DAYS ? "alert" : "warn" };
+  return stalenessFrom(a.updatedAt, now);
 }
 
 const RECENT_DONE_MS = DAY_MS;

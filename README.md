@@ -63,6 +63,13 @@ O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e 
   jornada à esquerda e leitura/edição à direita; busca, filtros de jornada e
   tipo, e o item aberto vai para a URL (link compartilhável). Qualquer um
   edita; o app assina quem criou e quem atualizou, pelo "Você é"
+- **Erros OM** (`/conhecimento/erros`): catálogo dos erros do OM, dentro da
+  aba Conhecimento. Uma linha por erro (não por ocorrência), com sintoma,
+  contorno em destaque, causa, jornada e quem trata (equipe ou externo).
+  Status **Em análise → Endereçado → Corrigido** numa trilha de um clique;
+  marcar como corrigido carimba a data da correção e voltar atrás a limpa.
+  Lista agrupada por status com "parado há X dias" (mesma régua do Kanban),
+  barra de registro rápido (só o sintoma + Enter) e busca
 - **Queries** (`/queries`): salvar queries de banco com título, copiar com um clique, buscar e **reordenar por drag-and-drop** (fractional indexing) — CRUD com optimistic UI
 
 ## Arquitetura
@@ -84,6 +91,9 @@ activity_comments  (id, activity_id, author_id?, content, created_at)
 saved_queries(id, title, query, position, created_at, updated_at)
 knowledge    (id, title, content, journey_id?, kind,
               created_at, created_by?, updated_at, updated_by?)
+om_errors    (id, symptom, workaround?, detail?, journey_id?, status,
+              handled_by?, fixed_at?,
+              created_at, created_by?, updated_at, updated_by?)
 ```
 
 - `stages` em tabela própria → novas etapas sem migration
@@ -98,15 +108,19 @@ knowledge    (id, title, content, journey_id?, kind,
 src/
   app/
     page.tsx               -- server: carrega tudo via Promise.all e passa para o shell
-    conhecimento/page.tsx  -- server: carrega conhecimento + jornadas para o KnowledgeShell
+    conhecimento/layout.tsx      -- sub-abas Conhecimento | Erros OM
+    conhecimento/page.tsx        -- server: conhecimento + jornadas
+    conhecimento/erros/page.tsx  -- server: erros OM + jornadas
     actions/
       activities.ts        -- create/update/delete/duplicate/move (com zod + revalidate)
       meta.ts              -- create stage/journey/assignee
       knowledge.ts         -- CRUD do conhecimento (zod + revalidate)
+      om-errors.ts         -- CRUD dos erros OM + trilha de status
     layout.tsx, globals.css
   components/
     app-shell.tsx          -- estado client (busca/view/group/dialog)
     knowledge/             -- KnowledgeShell (useOptimistic), lista, painel e editor
+    om/                    -- OmErrorsShell, lista por status, ficha e editor
     toolbar.tsx            -- busca, agrupar, alternar visão, novo
     list-view.tsx          -- agrupamento dinâmico
     board-view.tsx         -- DnD com @dnd-kit

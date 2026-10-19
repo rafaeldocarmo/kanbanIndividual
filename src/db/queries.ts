@@ -7,6 +7,7 @@ import {
   assignees,
   journeys,
   knowledge,
+  omErrors,
   savedQueries,
   stages,
 } from "./schema";
@@ -24,6 +25,7 @@ export const CACHE_TAGS = {
   activities: "activities",
   queries: "queries",
   knowledge: "knowledge",
+  omErrors: "om-errors",
 } as const;
 
 export type ActivityView = Awaited<ReturnType<typeof getActivities>>[number];
@@ -208,6 +210,13 @@ export const getKnowledge = unstable_cache(
   async () => db.select().from(knowledge).orderBy(desc(knowledge.updatedAt)),
   ["knowledge"],
   { tags: [CACHE_TAGS.knowledge] },
+);
+
+// O que mexeram por último primeiro, como no conhecimento.
+export const getOmErrors = unstable_cache(
+  async () => db.select().from(omErrors).orderBy(desc(omErrors.updatedAt)),
+  ["om-errors"],
+  { tags: [CACHE_TAGS.omErrors] },
 );
 
 export const getSavedQueries = unstable_cache(
