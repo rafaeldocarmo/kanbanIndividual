@@ -58,11 +58,13 @@ export type KnowledgeBootstrap = {
   items: Knowledge[];
 };
 
-/** Status dos Erros OM, na ordem do fluxo. */
+/** Colunas do Kanban OM, na ordem do fluxo. */
 export const OM_ERROR_STATUSES: { id: OmErrorStatus; label: string }[] = [
+  { id: "backlog", label: "Backlog" },
   { id: "analise", label: "Em análise" },
-  { id: "enderecado", label: "Endereçado" },
-  { id: "corrigido", label: "Corrigido" },
+  { id: "terceiros", label: "Pendente Terceiros" },
+  { id: "n3", label: "Pendente N3" },
+  { id: "defeito", label: "Defeito criado" },
 ];
 
 export const omStatusLabel = (status: OmErrorStatus) =>

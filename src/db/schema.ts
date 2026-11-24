@@ -230,10 +230,12 @@ export const knowledgeRelations = relations(knowledge, ({ one }) => ({
 
 // --- Erros OM (catálogo, dentro da aba Conhecimento) ---
 
-export const omErrorStatusEnum = pgEnum("om_error_status", [
+export const omStatusEnum = pgEnum("om_status", [
+  "backlog",
   "analise",
-  "enderecado",
-  "corrigido",
+  "terceiros",
+  "n3",
+  "defeito",
 ]);
 
 export const omErrors = pgTable(
@@ -247,11 +249,14 @@ export const omErrors = pgTable(
     journeyId: uuid("journey_id").references(() => journeys.id, {
       onDelete: "set null",
     }),
-    status: omErrorStatusEnum("status").notNull().default("analise"),
+    status: omStatusEnum("status").notNull().default("backlog"),
     /** Quem trata: nome de alguém da equipe ou externo (ex.: "DXC"). */
     handledBy: text("handled_by"),
-    /** Preenchida ao marcar como corrigido; limpa se voltar atrás. */
+    /** Número do defeito aberto (DFT/INC), quando chega nessa coluna. */
+    defectId: text("defect_id"),
     fixedAt: date("fixed_at"),
+    /** Ordem dentro da coluna (fractional indexing, como as atividades). */
+    position: numeric("position", { precision: 38, scale: 18 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -267,6 +272,7 @@ export const omErrors = pgTable(
   },
   (t) => ({
     statusIdx: index("om_errors_status_idx").on(t.status),
+    positionIdx: index("om_errors_position_idx").on(t.status, t.position),
   }),
 );
 
@@ -500,7 +506,7 @@ export type ActivityComment = typeof activityComments.$inferSelect;
 export type Priority = (typeof priorityEnum.enumValues)[number];
 export type Knowledge = typeof knowledge.$inferSelect;
 export type OmError = typeof omErrors.$inferSelect;
-export type OmErrorStatus = (typeof omErrorStatusEnum.enumValues)[number];
+export type OmErrorStatus = (typeof omStatusEnum.enumValues)[number];
 export type KnowledgeKind = (typeof knowledgeKindEnum.enumValues)[number];
 export type Note = typeof notes.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;

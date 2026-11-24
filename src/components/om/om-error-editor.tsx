@@ -23,6 +23,7 @@ export type OmErrorValues = {
   journeyId: string | null;
   status: OmErrorStatus;
   handledBy: string | null;
+  defectId: string | null;
   fixedAt: string | null;
 };
 
@@ -46,15 +47,9 @@ export function OmErrorEditor({
   const [journeyId, setJourneyId] = React.useState(error.journeyId);
   const [status, setStatus] = React.useState<OmErrorStatus>(error.status);
   const [handledBy, setHandledBy] = React.useState(error.handledBy ?? "");
+  const [defectId, setDefectId] = React.useState(error.defectId ?? "");
   const [fixedAt, setFixedAt] = React.useState(error.fixedAt ?? "");
-  const symptomRef = React.useRef<HTMLInputElement>(null);
-
-  // Marcar como corrigido já propõe hoje, como faz a trilha de status.
-  React.useEffect(() => {
-    if (status === "corrigido" && !fixedAt) {
-      setFixedAt(new Date().toISOString().slice(0, 10));
-    }
-  }, [status, fixedAt]);
+  const symptomRef = React.useRef<HTMLTextAreaElement>(null);
 
   const sugestoes = React.useMemo(() => {
     const nomes = new Set([...team.map((m) => m.name), ...handlers]);
@@ -74,18 +69,19 @@ export function OmErrorEditor({
       journeyId,
       status,
       handledBy: handledBy.trim() || null,
-      fixedAt: status === "corrigido" ? fixedAt || null : null,
+      defectId: defectId.trim() || null,
+      fixedAt: fixedAt || null,
     });
   };
 
   return (
     <div className="grid gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 shadow-sm sm:p-5">
-      <Input
+      <Textarea
         ref={symptomRef}
         value={symptom}
         onChange={(e) => setSymptom(e.target.value)}
-        placeholder="Como o erro aparece"
-        className="h-10 text-base font-medium"
+        placeholder="Como o erro aparece (a mensagem inteira, se ajudar)"
+        className="min-h-[72px] text-base font-medium leading-snug"
         maxLength={300}
       />
 
@@ -138,18 +134,24 @@ export function OmErrorEditor({
           </datalist>
         </div>
 
-        {status === "corrigido" && (
-          <label className="flex items-center gap-2 text-xs text-[var(--color-muted-foreground)]">
-            Corrigido em
-            <Input
-              type="date"
-              value={fixedAt}
-              onChange={(e) => setFixedAt(e.target.value)}
-              className="w-[150px]"
-              aria-label="Data da correção"
-            />
-          </label>
-        )}
+        <Input
+          value={defectId}
+          onChange={(e) => setDefectId(e.target.value)}
+          placeholder="Defeito (DFT/INC)"
+          className="w-[170px]"
+          maxLength={60}
+        />
+
+        <label className="flex items-center gap-2 text-xs text-[var(--color-muted-foreground)]">
+          Corrigido em
+          <Input
+            type="date"
+            value={fixedAt}
+            onChange={(e) => setFixedAt(e.target.value)}
+            className="w-[150px]"
+            aria-label="Data da correção"
+          />
+        </label>
       </div>
 
       <div className="grid gap-1.5">

@@ -3,7 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Database, BookOpen, Sun, Moon } from "lucide-react";
+import {
+  LayoutGrid,
+  Bug,
+  Database,
+  BookOpen,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { IdentityPicker } from "@/components/team/identity-picker";
@@ -17,6 +24,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { href: "/", label: "Kanban", icon: LayoutGrid },
+  { href: "/om", label: "Kanban OM", icon: Bug },
   { href: "/queries", label: "Queries", icon: Database },
   { href: "/conhecimento", label: "Conhecimento", icon: BookOpen },
 ];
@@ -60,7 +68,8 @@ export function Header() {
                 )}
               >
                 <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{label}</span>
+                {/* Com 4 abas, os rótulos só cabem em telas largas. */}
+                <span className="hidden lg:inline">{label}</span>
               </Link>
             );
           })}

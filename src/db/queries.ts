@@ -212,12 +212,22 @@ export const getKnowledge = unstable_cache(
   { tags: [CACHE_TAGS.knowledge] },
 );
 
-// O que mexeram por último primeiro, como no conhecimento.
+// Ordem das colunas do quadro: posição dentro de cada status.
 export const getOmErrors = unstable_cache(
-  async () => db.select().from(omErrors).orderBy(desc(omErrors.updatedAt)),
+  async () => db.select().from(omErrors).orderBy(asc(omErrors.position)),
   ["om-errors"],
   { tags: [CACHE_TAGS.omErrors] },
 );
+
+/** Fim da coluna, para o cartão novo entrar embaixo. */
+export async function nextPositionForOmStatus(status: string): Promise<number> {
+  const result = await db
+    .select({ max: sql<string | null>`max(${omErrors.position})` })
+    .from(omErrors)
+    .where(eq(omErrors.status, status as never));
+  const max = result[0]?.max ? Number(result[0].max) : 0;
+  return max + 1000;
+}
 
 export const getSavedQueries = unstable_cache(
   async () => db.select().from(savedQueries).orderBy(asc(savedQueries.position)),

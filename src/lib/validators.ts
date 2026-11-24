@@ -70,13 +70,19 @@ export const stageInput = z.object({
 
 // --- Erros OM ---
 
-const omStatus = z.enum(["analise", "enderecado", "corrigido"]);
+const omStatus = z.enum(["backlog", "analise", "terceiros", "n3", "defeito"]);
 
 export const omErrorInput = z.object({
   symptom: z.string().trim().min(1, "Descreva o erro").max(300),
   detail: z.string().trim().max(20000).nullable(),
   journeyId: z.string().uuid().nullable(),
   status: omStatus,
+  defectId: z
+    .string()
+    .trim()
+    .max(60)
+    .nullable()
+    .transform((v) => v || null),
   handledBy: z
     .string()
     .trim()
@@ -92,9 +98,12 @@ export const omErrorInput = z.object({
 });
 export type OmErrorInput = z.infer<typeof omErrorInput>;
 
-export const omErrorStatusInput = z.object({
+/** Arrastar no quadro: muda a coluna e/ou a ordem dentro dela. */
+export const omMoveInput = z.object({
   id: z.string().uuid(),
   status: omStatus,
+  beforeId: z.string().uuid().nullable().optional(),
+  afterId: z.string().uuid().nullable().optional(),
 });
 
 // --- Banco de Conhecimento ---
