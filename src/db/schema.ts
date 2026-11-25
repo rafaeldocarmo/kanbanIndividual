@@ -249,6 +249,10 @@ export const omErrors = pgTable(
     journeyId: uuid("journey_id").references(() => journeys.id, {
       onDelete: "set null",
     }),
+    /** Quem na equipe acompanha o erro. */
+    assigneeId: uuid("assignee_id").references(() => assignees.id, {
+      onDelete: "set null",
+    }),
     status: omStatusEnum("status").notNull().default("backlog"),
     /** Quem trata: nome de alguém da equipe ou externo (ex.: "DXC"). */
     handledBy: text("handled_by"),
@@ -273,6 +277,7 @@ export const omErrors = pgTable(
   (t) => ({
     statusIdx: index("om_errors_status_idx").on(t.status),
     positionIdx: index("om_errors_position_idx").on(t.status, t.position),
+    assigneeIdx: index("om_errors_assignee_idx").on(t.assigneeId),
   }),
 );
 
@@ -280,6 +285,10 @@ export const omErrorsRelations = relations(omErrors, ({ one }) => ({
   journey: one(journeys, {
     fields: [omErrors.journeyId],
     references: [journeys.id],
+  }),
+  assignee: one(assignees, {
+    fields: [omErrors.assigneeId],
+    references: [assignees.id],
   }),
 }));
 

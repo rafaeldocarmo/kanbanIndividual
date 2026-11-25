@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Bug } from "lucide-react";
+import { PersonAvatar } from "@/components/team/assignee-picker";
 import { stalenessFrom } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import type { Journey, OmError } from "@/db/schema";
@@ -50,6 +51,7 @@ function OmCardImpl({ error, journeys, onClick, dragging }: Props) {
       <p className="line-clamp-3 leading-snug">{error.symptom}</p>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--color-muted-foreground)]">
+        <PersonAvatar id={error.assigneeId} size={20} />
         {journey && (
           <span className="rounded-full border border-[var(--color-border)] px-1.5 py-0.5">
             {journey.name}

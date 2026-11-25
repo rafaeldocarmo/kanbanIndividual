@@ -22,6 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Bug, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
+import { PersonAvatar } from "@/components/team/assignee-picker";
 import {
   groupByStatus,
   resolveMove,
@@ -70,6 +71,10 @@ function Row({
       >
         <GripVertical className="h-4 w-4 text-[var(--color-muted-foreground)]" />
       </button>
+
+      <span className="mt-0.5">
+        <PersonAvatar id={error.assigneeId} size={20} />
+      </span>
 
       <button
         onClick={() => onClick(error)}

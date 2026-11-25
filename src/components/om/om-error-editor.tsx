@@ -12,15 +12,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTeam } from "@/components/team/team-provider";
+import { Avatar } from "@/components/ui/badge";
 import { OM_ERROR_STATUSES } from "@/lib/types";
 import type { Journey, OmError, OmErrorStatus } from "@/db/schema";
 
 const SEM_JORNADA = "__sem__";
+const SEM_RESPONSAVEL = "__ninguem__";
 
 export type OmErrorValues = {
   symptom: string;
   detail: string | null;
   journeyId: string | null;
+  assigneeId: string | null;
   status: OmErrorStatus;
   handledBy: string | null;
   defectId: string | null;
@@ -45,6 +48,7 @@ export function OmErrorEditor({
   const [symptom, setSymptom] = React.useState(error.symptom);
   const [detail, setDetail] = React.useState(error.detail ?? "");
   const [journeyId, setJourneyId] = React.useState(error.journeyId);
+  const [assigneeId, setAssigneeId] = React.useState(error.assigneeId);
   const [status, setStatus] = React.useState<OmErrorStatus>(error.status);
   const [handledBy, setHandledBy] = React.useState(error.handledBy ?? "");
   const [defectId, setDefectId] = React.useState(error.defectId ?? "");
@@ -67,6 +71,7 @@ export function OmErrorEditor({
       symptom: s,
       detail: detail.trim() || null,
       journeyId,
+      assigneeId,
       status,
       handledBy: handledBy.trim() || null,
       defectId: defectId.trim() || null,
@@ -98,6 +103,28 @@ export function OmErrorEditor({
             {journeys.map((j) => (
               <SelectItem key={j.id} value={j.id}>
                 {j.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={assigneeId ?? SEM_RESPONSAVEL}
+          onValueChange={(v) =>
+            setAssigneeId(v === SEM_RESPONSAVEL ? null : v)
+          }
+        >
+          <SelectTrigger className="w-[165px]">
+            <SelectValue placeholder="Responsável" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={SEM_RESPONSAVEL}>Sem responsável</SelectItem>
+            {team.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                <span className="flex items-center gap-2">
+                  <Avatar initials={m.initials} hue={m.hue} size={18} />
+                  {m.name}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>

@@ -76,6 +76,7 @@ export const omErrorInput = z.object({
   symptom: z.string().trim().min(1, "Descreva o erro").max(300),
   detail: z.string().trim().max(20000).nullable(),
   journeyId: z.string().uuid().nullable(),
+  assigneeId: z.string().uuid().nullable(),
   status: omStatus,
   defectId: z
     .string()
@@ -97,6 +98,11 @@ export const omErrorInput = z.object({
     .or(z.literal("").transform(() => null)),
 });
 export type OmErrorInput = z.infer<typeof omErrorInput>;
+
+export const omAssignInput = z.object({
+  id: z.string().uuid(),
+  assigneeId: z.string().uuid().nullable(),
+});
 
 /** Arrastar no quadro: muda a coluna e/ou a ordem dentro dela. */
 export const omMoveInput = z.object({

@@ -15,6 +15,7 @@ import {
   OmErrorEditor,
   type OmErrorValues,
 } from "@/components/om/om-error-editor";
+import { OmAssigneePicker } from "@/components/om/om-assignee";
 import { useTeam } from "@/components/team/team-provider";
 import { Markdown } from "@/lib/markdown";
 import { omStatusLabel } from "@/lib/types";
@@ -29,6 +30,7 @@ export function OmDialog({
   journeys,
   handlers,
   onSave,
+  onAssign,
   onDelete,
 }: {
   open: boolean;
@@ -37,6 +39,7 @@ export function OmDialog({
   journeys: Journey[];
   handlers: string[];
   onSave: (values: OmErrorValues) => void;
+  onAssign: (assigneeId: string | null) => void;
   onDelete: () => void;
 }) {
   const { member } = useTeam();
@@ -103,7 +106,18 @@ export function OmDialog({
             )}
 
             <footer className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--color-border)] pt-3 text-[11px] text-[var(--color-muted-foreground)]">
-              <span>{error.handledBy ? `Com ${error.handledBy}` : "Sem dono"}</span>
+              <OmAssigneePicker
+                assigneeId={error.assigneeId}
+                onChange={onAssign}
+                size={22}
+              />
+              <span>
+                {member(error.assigneeId)?.name ?? "Sem responsável"}
+              </span>
+              <span aria-hidden>·</span>
+              <span>
+                {error.handledBy ? `com ${error.handledBy}` : "sem terceiro"}
+              </span>
               {error.fixedAt && (
                 <>
                   <span aria-hidden>·</span>

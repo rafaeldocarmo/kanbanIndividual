@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import { omErrors } from "@/db/schema";
 import { CACHE_TAGS, nextPositionForOmStatus } from "@/db/queries";
 import { getCurrentUserId } from "@/lib/current-user";
-import { omErrorInput, omMoveInput } from "@/lib/validators";
+import { omAssignInput, omErrorInput, omMoveInput } from "@/lib/validators";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -38,6 +38,8 @@ export async function createOmError(input: unknown): Promise<ActionResult> {
     id: parsed.data.id,
     symptom: parsed.data.symptom,
     position: position.toString(),
+    // Quem registra acompanha, até passar para outra pessoa.
+    assigneeId: me,
     createdById: me,
     updatedById: me,
   });
@@ -59,6 +61,22 @@ export async function updateOmError(input: unknown): Promise<ActionResult> {
     .update(omErrors)
     .set({ ...values, updatedAt: new Date(), updatedById: me })
     .where(eq(omErrors.id, id));
+  revalidateOmErrors();
+  return { ok: true };
+}
+
+/** Trocar o responsável sem abrir o formulário. */
+export async function assignOmError(input: unknown): Promise<ActionResult> {
+  const parsed = omAssignInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Responsável inválido" };
+  await db
+    .update(omErrors)
+    .set({
+      assigneeId: parsed.data.assigneeId,
+      updatedAt: new Date(),
+      updatedById: await getCurrentUserId(),
+    })
+    .where(eq(omErrors.id, parsed.data.id));
   revalidateOmErrors();
   return { ok: true };
 }

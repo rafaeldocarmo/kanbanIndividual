@@ -66,7 +66,8 @@ O responsável é o eixo da interface: as duas perguntas são "o que é meu?" e 
 - **Kanban OM** (`/om`): quadro dos erros do OM, em aba própria. Colunas
   **Backlog · Em análise · Pendente Terceiros · Pendente N3 · Defeito criado**,
   arrastar move e reordena (fractional indexing, como as atividades). Cartão
-  com sintoma, jornada, quem trata (equipe ou externo), número do defeito
+  com sintoma, responsável da equipe (avatar, trocado em um clique na ficha),
+  jornada, quem trata do lado de fora (DXC, MOBILE…), número do defeito
   (DFT/INC) e "há X dias" parado — exceto em "Defeito criado". Clicar abre a
   ficha, com causa e contexto em markdown. Alterna **Lista/Quadro** (na URL,
   como no Kanban): a lista agrupa por status, mostra o sintoma inteiro e vem
@@ -94,8 +95,8 @@ activity_comments  (id, activity_id, author_id?, content, created_at)
 saved_queries(id, title, query, position, created_at, updated_at)
 knowledge    (id, title, content, journey_id?, kind,
               created_at, created_by?, updated_at, updated_by?)
-om_errors    (id, symptom, detail?, journey_id?, status, position numeric,
-              handled_by?, defect_id?, fixed_at?,
+om_errors    (id, symptom, detail?, journey_id?, assignee_id?, status,
+              position numeric, handled_by?, defect_id?, fixed_at?,
               created_at, created_by?, updated_at, updated_by?)
 ```
 

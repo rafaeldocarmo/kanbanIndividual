@@ -19,6 +19,7 @@ import type { OmMove } from "@/components/om/om-move";
 import type { OmErrorValues } from "@/components/om/om-error-editor";
 import { useTeam } from "@/components/team/team-provider";
 import {
+  assignOmError,
   createOmError,
   deleteOmError,
   moveOmError,
@@ -30,6 +31,7 @@ import type { OmError } from "@/db/schema";
 
 const ALL = "all";
 const SEM_JORNADA = "sem";
+const SEM_RESPONSAVEL = "ninguem";
 const VIEWS: ViewMode[] = ["list", "board"];
 
 type Mutation = { op: "upsert"; item: OmError } | { op: "delete"; id: string };
@@ -52,7 +54,7 @@ export function OmShell({
   data: OmErrorsBootstrap;
   initialView?: ViewMode;
 }) {
-  const { me } = useTeam();
+  const { me, team, member } = useTeam();
   const [view, setView] = useQueryState(
     "view",
     parseAsStringEnum(VIEWS).withDefault(initialView ?? "board"),
@@ -60,6 +62,7 @@ export function OmShell({
   const [items, applyOptimistic] = React.useOptimistic(data.items, reducer);
   const [search, setSearch] = React.useState("");
   const [journey, setJourney] = React.useState(ALL);
+  const [assignee, setAssignee] = React.useState(ALL);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState("");
   const draftRef = React.useRef<HTMLInputElement>(null);
@@ -104,12 +107,20 @@ export function OmShell({
         const key = e.journeyId ?? SEM_JORNADA;
         if (key !== journey) return false;
       }
+      if (assignee !== ALL) {
+        const key = e.assigneeId ?? SEM_RESPONSAVEL;
+        if (key !== assignee) return false;
+      }
       if (!q) return true;
-      return [e.symptom, e.detail, e.handledBy, e.defectId].some((t) =>
-        t?.toLowerCase().includes(q),
-      );
+      return [
+        e.symptom,
+        e.detail,
+        e.handledBy,
+        e.defectId,
+        member(e.assigneeId)?.name,
+      ].some((t) => t?.toLowerCase().includes(q));
     });
-  }, [items, journey, search]);
+  }, [items, journey, assignee, search, member]);
 
   const open = openId ? (items.find((e) => e.id === openId) ?? null) : null;
 
@@ -130,6 +141,7 @@ export function OmShell({
       symptom,
       detail: null,
       journeyId: null,
+      assigneeId: me.id,
       status: "backlog",
       handledBy: null,
       defectId: null,
@@ -177,6 +189,19 @@ export function OmShell({
     };
     mutate({ op: "upsert", item }, () =>
       updateOmError({ ...values, id: open.id }),
+    );
+  };
+
+  const assign = (assigneeId: string | null) => {
+    if (!open) return;
+    const item: OmError = {
+      ...open,
+      assigneeId,
+      updatedAt: new Date(),
+      updatedById: me?.id ?? null,
+    };
+    mutate({ op: "upsert", item }, () =>
+      assignOmError({ id: open.id, assigneeId }),
     );
   };
 
@@ -264,6 +289,21 @@ export function OmShell({
               <SelectItem value={SEM_JORNADA}>Sem jornada</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={assignee} onValueChange={setAssignee}>
+            <SelectTrigger className="w-[190px]">
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Qualquer responsável</SelectItem>
+              {team.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name}
+                </SelectItem>
+              ))}
+              <SelectItem value={SEM_RESPONSAVEL}>Sem responsável</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {view === "list" ? (
@@ -289,6 +329,7 @@ export function OmShell({
           journeys={data.journeys}
           handlers={handlers}
           onSave={save}
+          onAssign={assign}
           onDelete={remove}
         />
       </div>
